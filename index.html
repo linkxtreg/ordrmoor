@@ -1,0 +1,60 @@
+
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="icon" type="image/png" href="/favicon.png" />
+      <title>OrdrMoor | Digital Menu Platform</title>
+      <meta
+        name="description"
+        content="OrdrMoor helps restaurants replace Menu PDF files with a digital menu, QR menu, and easy online menu management."
+      />
+      <meta
+        name="keywords"
+        content="digital menu, menu pdf, qr menu, online menu, restaurant menu, restaurant digital menu, menu management, interactive menu"
+      />
+      <meta name="robots" content="index, follow" />
+      <link rel="canonical" href="https://ordrmoor.netlify.app/" />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="OrdrMoor | Digital Menu Platform" />
+      <meta
+        property="og:description"
+        content="Replace Menu PDF with a digital menu and QR menu experience that is easier to manage and better for customers."
+      />
+      <meta property="og:url" content="https://ordrmoor.netlify.app/" />
+      <meta property="og:site_name" content="OrdrMoor" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="OrdrMoor | Digital Menu Platform" />
+      <meta
+        name="twitter:description"
+        content="Replace Menu PDF with a digital menu and QR menu experience that is easier to manage and better for customers."
+      />
+      <script>
+        (function () {
+          var gaId = "%VITE_GA_MEASUREMENT_ID%";
+          var hasGaId = gaId && gaId !== "__GA_ID_PLACEHOLDER__";
+          if (!hasGaId) return;
+
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function () {
+            window.dataLayer.push(arguments);
+          };
+          window.gtag("js", new Date());
+          // We send page views manually for selected customer routes only.
+          window.gtag("config", gaId, { send_page_view: false });
+
+          var script = document.createElement("script");
+          script.async = true;
+          script.src = "https://www.googletagmanager.com/gtag/js?id=" + gaId;
+          document.head.appendChild(script);
+        })();
+      </script>
+    </head>
+
+    <body>
+      <div id="root"></div>
+      <script type="module" src="/src/main.tsx"></script>
+    </body>
+  </html>
+  

@@ -1,0 +1,38 @@
+/* Import Google Fonts with Arabic support */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+/* Apply fonts globally with Arabic support */
+body {
+  font-family: 'IBM Plex Sans Arabic', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure proper text rendering for all languages */
+* {
+  unicode-bidi: plaintext;
+}
+
+/* Specific font classes for consistency */
+.font-inter {
+  font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif;
+}
+
+.font-poppins {
+  font-family: 'Poppins', 'IBM Plex Sans Arabic', sans-serif;
+}
+
+.font-arabic {
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+}
+
+/* RTL layout support */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}

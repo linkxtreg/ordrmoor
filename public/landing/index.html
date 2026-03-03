@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="Images/favicon.png">
+    <!-- Heroicons (https://heroicons.com) via jsDelivr CDN. Use as:
+         Outline 24px: https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/ICON_NAME.svg
+         Solid 24px:   https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/solid/ICON_NAME.svg
+         Mini 20px:    https://cdn.jsdelivr.net/npm/heroicons@2.1.5/20/solid/ICON_NAME.svg
+         Example: <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/arrow-right.svg" alt=""> -->
+    <title>OrdrMoor | منصة المنيو الرقمي</title>
+    <meta name="description" content="OrdrMoor يساعد المطاعم على استبدال Menu PDF بمنيو رقمي وQR Menu مع إدارة سهلة للأسعار والأصناف والعروض.">
+    <meta name="keywords" content="digital menu, menu pdf, qr menu, online menu, restaurant menu, menu management, منيو رقمي, منيو PDF, QR Menu, إدارة المنيو">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://ordrmoor.netlify.app/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="OrdrMoor | منصة المنيو الرقمي">
+    <meta property="og:description" content="استبدل Menu PDF بمنيو رقمي وQR Menu مع إدارة أسهل وتجربة أفضل للعميل.">
+    <meta property="og:url" content="https://ordrmoor.netlify.app/">
+    <meta property="og:site_name" content="OrdrMoor">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="OrdrMoor | منصة المنيو الرقمي">
+    <meta name="twitter:description" content="استبدل Menu PDF بمنيو رقمي وQR Menu مع إدارة أسهل وتجربة أفضل للعميل.">
+    
+    <style>
+        /* CSS Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-green: #CFFF5E;
+            --red-accent: #e7000b;
+            --black: #101010;
+            --white: #ffffff;
+            --gray-text: #52525c;
+            --gray-bg: #f3f4f6;
+        }
+
+        html {
+            direction: rtl;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        section[id] {
+            scroll-margin-top: 100px;
+        }
+
+        body {
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--black);
+            background: var(--white);
+            line-height: 1.6;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            zoom: 0.9;
+            -moz-transform: scale(0.9);
+            -moz-transform-origin: 0 0;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding-top: 72px;
+        }
+
+        /* Fixed Top Navigation */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--white);
+            padding: 24px 24px;
+            box-shadow: 0 1px 0 0 rgba(0,0,0,0.1);
+        }
+
+        .top-nav .nav-inner {
+            max-width: 1440px;
+            margin: 0 auto;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .top-nav .nav-ctas {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-nav .nav-login,
+        .top-nav .nav-signup {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: 1px solid var(--black);
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 6px 0 0 var(--black);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+
+        .top-nav .nav-login:hover,
+        .top-nav .nav-signup:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 0 0 var(--black);
+            background-color: #f9faf3;
+        }
+
+        .top-nav .nav-login {
+            background: var(--white);
+            color: var(--black);
+        }
+
+        .top-nav .nav-signup {
+            background: var(--neon-green);
+            color: var(--black);
+        }
+
+        .top-nav .nav-logo-link {
+            display: block;
+            text-decoration: none;
+        }
+
+        .top-nav .nav-logo {
+            width: 100px;
+            height: auto;
+            display: block;
+        }
+
+        .top-nav .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .top-nav .nav-links a {
+            color: var(--black);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            position: relative;
+            z-index: 1;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: color 0.2s ease;
+        }
+
+        .top-nav .nav-links a::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            background: rgba(220, 252, 75, 0.55);
+            transform: scaleX(0);
+            transform-origin: center;
+            transition: transform 0.2s ease;
+            z-index: -1;
+        }
+
+        .top-nav .nav-links a:hover {
+            color: var(--black);
+        }
+
+        .top-nav .nav-links a:hover::after {
+            transform: scaleX(1);
+        }
+
+        /* Typography */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;900&family=Rubik:wght@400;500;600;700&display=swap');
+
+        @font-face {
+            font-family: 'Hanson';
+            src: url('Hanson-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        /* Container & Layout */
+        .container {
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: var(--white);
+            padding: 0 0 80px 0;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .hero-left {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-phones {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .phone-mockup {
+            flex-shrink: 0;
+        }
+
+        .phone-mockup-1 {
+            transform: scale(0.75);
+        }
+
+        .phone-mockup-1 .phone-frame {
+            width: 500px;
+            padding: 14px;
+            border-radius: 88px;
+        }
+
+        .phone-mockup-1 .phone-screen {
+            border-radius: 68px;
+        }
+
+        .phone-mockup-1 .phone-home-indicator {
+            width: 200px;
+            height: 8px;
+            bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .phone-mockup-1 .phone-frame::before {
+            top: 180px;
+            height: 56px;
+            width: 8px;
+            border-radius: 0 5px 5px 0;
+        }
+
+        .phone-mockup-1 .phone-frame::after {
+            top: 140px;
+            height: 100px;
+            width: 8px;
+            border-radius: 5px 0 0 5px;
+        }
+
+        .phone-frame {
+            width: 250px;
+            background: linear-gradient(160deg, #3a3a3a 0%, #1c1c1e 50%, #0d0d0f 100%);
+            border-radius: 44px;
+            padding: 14px;
+            position: relative;
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 90px;
+            width: 4px;
+            height: 28px;
+            background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+            border-radius: 0 3px 3px 0;
+            box-shadow: inset 0 0 2px rgba(0,0,0,0.5);
+        }
+
+        .phone-frame::after {
+            content: '';
+            position: absolute;
+            right: -2px;
+            top: 70px;
+            width: 4px;
+            height: 50px;
+            background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+            border-radius: 3px 0 0 3px;
+            box-shadow: inset 0 0 2px rgba(0,0,0,0.5);
+        }
+
+        .phone-screen {
+            width: 100%;
+            border-radius: 34px;
+            overflow: hidden;
+            background: #000;
+            aspect-ratio: 9 / 19.5;
+            position: relative;
+        }
+
+        .phone-home-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: rgba(255,255,255,0.35);
+            border-radius: 2px;
+            z-index: 2;
+        }
+
+        .phone-screen img,
+        .phone-screen video,
+        .phone-screen .phone-screen-media {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .hero-mockup {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .hero-mockup img {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15));
+        }
+
+        h1,
+        .hero-title,
+        .section-title,
+        .steps-title,
+        .cta-title {
+            line-height: 1.2;
+        }
+
+        .hero-title {
+            font-size: clamp(48px, 8vw, 128px);
+            margin-bottom: 40px;
+        }
+
+        .hero-title .small {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 400;
+            font-size: 0.5em;
+            text-transform: none;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .hero-title .small-inline {
+            font-size: 0.45em;
+            font-weight: 400;
+            vertical-align: middle;
+        }
+
+        .highlight {
+            position: relative;
+            padding: 0 8px;
+            display: inline-block;
+            vertical-align: text-bottom;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        .highlight::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: var(--neon-green);
+            z-index: -1;
+        }
+
+        /* Highlight animates when section is in view (works when scrolling up or down) */
+        .scroll-reveal .highlight::before {
+            clip-path: inset(0 100% 0 0);
+        }
+
+        .scroll-reveal.in-view .highlight::before {
+            animation: highlightSlideIn 0.6s ease-out 0.2s forwards;
+        }
+
+        .highlight-red::before {
+            background: #FF5E61;
+        }
+
+        @keyframes highlightSlideIn {
+            from {
+                clip-path: inset(0 100% 0 0);
+            }
+            to {
+                clip-path: inset(0 0 0 0);
+            }
+        }
+
+        .hero-subtitle {
+            font-size: 24px;
+            line-height: 1.5;
+            color: var(--black);
+            max-width: 600px;
+        }
+
+        /* Problem Section */
+        .problem-section {
+            background: var(--white);
+            padding: 120px 100px;
+        }
+
+        .problem-section .section-header {
+            text-align: center;
+        }
+
+        .section-header {
+            margin-bottom: 60px;
+        }
+
+        .section-title {
+            font-size: clamp(26px, 5vw, 44px);
+            margin-bottom: 24px;
+        }
+
+        .section-subtitle {
+            font-size: 22px;
+            line-height: 1.6;
+            color: var(--black);
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .card {
+            background: var(--white);
+            border: 1px solid var(--black);
+            border-radius: 10px;
+            padding: 32px;
+            box-shadow: 0 6px 0 0 var(--black);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover,
+        .stand-card:hover,
+        .branding-card:hover,
+        .pricing-card:hover,
+        .step-card:hover,
+        .testimonial-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 0 0 var(--black);
+            background-color: #f9faf3;
+        }
+
+        .card .card-title,
+        .stand-card .stand-info h3,
+        .branding-card .card-title,
+        .pricing-card .card-title,
+        .step-card .step-title {
+            position: relative;
+            padding: 0 8px;
+            display: inline-block;
+        }
+
+        .card .card-title::before,
+        .stand-card .stand-info h3::before,
+        .branding-card .card-title::before,
+        .pricing-card .card-title::before,
+        .step-card .step-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: var(--neon-green);
+            z-index: -1;
+            clip-path: inset(0 100% 0 0);
+        }
+
+        .card:hover .card-title::before,
+        .stand-card:hover .stand-info h3::before,
+        .branding-card:hover .card-title::before,
+        .pricing-card:hover .card-title::before,
+        .step-card:hover .step-title::before {
+            animation: highlightSlideIn 0.6s ease-out forwards;
+        }
+
+        .problem-section .card .card-title::before {
+            background: #FF5E61;
+        }
+
+        .card-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 32px;
+        }
+
+        .card-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .card-title,
+        .card .card-title,
+        .branding-card .card-title,
+        .pricing-card .card-title {
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        }
+
+        .card-title {
+            font-size: 24px;
+            line-height: 1;
+            margin-bottom: 16px;
+            text-transform: capitalize;
+            font-weight: 700;
+        }
+
+        .card-text {
+            font-size: 16px;
+            line-height: 1.75;
+            color: var(--black);
+        }
+
+        /* Solution Section */
+        .solution-section {
+            background: var(--white);
+            padding: 120px 100px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .solution-image {
+            width: 100%;
+            border-radius: 50px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+        }
+
+        .solution-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Menu Features Section */
+        .menu-features {
+            background: var(--white);
+            padding: 120px 100px;
+            text-align: center;
+        }
+
+        .feature-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 50px;
+            margin-top: 80px;
+        }
+
+        .feature-cards > div {
+            background: var(--white);
+            overflow: hidden;
+        }
+
+        .menu-preview {
+            width: 100%;
+            padding: 20px;
+        }
+
+        .menu-preview img,
+        .feature-cards > div > div img {
+            width: 100%;
+            height: auto;
+            border-bottom: 1px solid #000;
+        }
+
+        .feature-cards > div > div {
+            width: 100%;
+        }
+
+        .feature-label {
+            background: transparent;
+            color: var(--black);
+            padding: 20px;
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2.64px;
+        }
+
+        /* Management Section */
+        .management-section {
+            background: var(--white);
+            padding: 120px 100px;
+            text-align: center;
+        }
+
+        .management-section .section-subtitle {
+            padding-bottom: 16px;
+        }
+
+        .dashboard-preview {
+            width: 100%;
+            max-width: 1080px;
+            margin: 80px auto 0;
+            border: 5px solid var(--black);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+        }
+
+        .dashboard-preview img,
+        .dashboard-preview video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Control Features */
+        .control-section {
+            background: var(--white);
+            padding: 120px 100px;
+        }
+
+        .control-section .section-header {
+            text-align: center;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        /* QR Stands Section */
+        .qr-stands {
+            background: var(--white);
+            padding: 120px 100px;
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto;
+            gap: 80px;
+            align-items: start;
+        }
+
+        .qr-stands-header {
+            text-align: center;
+        }
+
+        .qr-stands-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+        }
+
+        .stand-card {
+            background: var(--white);
+            border: 1px solid var(--black);
+            border-radius: 10px;
+            padding: 32px;
+            box-shadow: 0 6px 0 0 var(--black);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stand-image {
+            width: 264px;
+            height: 264px;
+            flex-shrink: 0;
+        }
+
+        .stand-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .stand-info h3 {
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 24px;
+            margin-bottom: 12px;
+            text-transform: capitalize;
+            font-weight: 700;
+        }
+
+        .stand-info p {
+            font-size: 14px;
+            line-height: 1.75;
+            color: var(--black);
+        }
+
+        /* Branding Section */
+        .branding-section {
+            background: var(--white);
+            padding: 120px 100px;
+            text-align: center;
+        }
+
+        .branding-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 80px;
+        }
+
+        .branding-card {
+            background: var(--white);
+            border: 1px solid var(--black);
+            border-radius: 10px;
+            padding: 32px;
+            box-shadow: 0 6px 0 0 var(--black);
+            text-align: right;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .branding-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 24px;
+        }
+
+        /* Testimonial Section */
+        .testimonial-section {
+            background: var(--white);
+            padding: 120px 100px;
+            text-align: center;
+        }
+
+        .testimonial-slider {
+            position: relative;
+            width: 70%;
+            max-width: 70%;
+            margin: 20px auto 0;
+            overflow: hidden;
+        }
+
+        .testimonial-track {
+            display: flex;
+            transition: transform 0.4s ease-out;
+            width: 200%;
+        }
+
+        .testimonial-slide {
+            flex: 0 0 50%;
+            width: 50%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        .testimonial-card {
+            border: 2px solid var(--black);
+            border-radius: 32px;
+            padding: 64px;
+            display: flex;
+            gap: 64px;
+            align-items: center;
+            max-width: 1440px;
+            margin: 20px auto;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .testimonial-image {
+            width: 300px;
+            height: 300px;
+            border-radius: 24px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .testimonial-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .testimonial-content {
+            text-align: right;
+        }
+
+        .testimonial-quote {
+            font-size: 32px;
+            line-height: 1.4;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .testimonial-author {
+            font-size: 18px;
+            line-height: 2.2;
+            font-weight: 500;
+            color: var(--black);
+        }
+
+        .testimonial-dots {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 32px;
+        }
+        .testimonial-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--black);
+            background: transparent;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .testimonial-dot:hover,
+        .testimonial-dot.active {
+            background: var(--black);
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            background: var(--white);
+            padding: 120px 100px;
+            text-align: center;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            max-width: 1100px;
+            margin: 80px auto 0;
+            align-items: start;
+        }
+
+        .pricing-card {
+            background: var(--white);
+            border: 2px solid var(--black);
+            border-radius: 16px;
+            padding: 42px;
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .pricing-card.featured {
+            background: #f9faf3;
+            box-shadow: 0 8px 0 0 var(--black);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--neon-green);
+            border: 1px solid var(--black);
+            border-radius: 100px;
+            padding: 9px 25px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            box-shadow: 0 3px 0 0 var(--black);
+        }
+
+        .pricing-plan {
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .pricing-amount {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .pricing-amount .price {
+            font-family: 'Hanson', 'Montserrat', sans-serif;
+            font-size: 48px;
+            font-weight: 700;
+        }
+
+        .pricing-amount .period {
+            font-size: 18px;
+            color: rgba(0,0,0,0.7);
+        }
+
+        .pricing-note {
+            font-size: 14px;
+            color: rgba(0,0,0,0.7);
+            margin-bottom: 32px;
+        }
+
+        .pricing-toggle-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 40px;
+            margin-bottom: 24px;
+        }
+
+        .pricing-toggle {
+            display: inline-flex;
+            gap: 12px;
+        }
+
+        .pricing-toggle button {
+            padding: 10px 24px;
+            border: 2px solid var(--black);
+            border-radius: 100px;
+            background: var(--white);
+            box-shadow: 0 4px 0 0 var(--black);
+            font-size: 22px;
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .pricing-toggle button.active {
+            background: var(--black);
+            color: var(--white);
+        }
+
+        .pricing-toggle button:not(.active):hover {
+            background: rgba(0,0,0,0.06);
+        }
+
+        .pricing-toggle .pricing-save-badge {
+            display: inline;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--black);
+            margin-left: 6px;
+            white-space: nowrap;
+            transition: color 0.2s ease;
+        }
+
+        .pricing-toggle button.active .pricing-save-badge {
+            color: var(--neon-green);
+        }
+
+
+        .pricing-features {
+            text-align: right;
+        }
+
+        .pricing-feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .pricing-feature .check {
+            width: 20px;
+            height: 20px;
+            background: var(--black);
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pricing-feature .check svg {
+            width: 12px;
+            height: 12px;
+            fill: var(--white);
+        }
+
+        .pricing-feature span {
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+
+        /* Steps Section */
+        .steps-section {
+            background: var(--white);
+            padding: 120px 100px;
+            text-align: center;
+        }
+
+        .steps-title {
+            font-size: clamp(22px, 4vw, 44px);
+            margin-bottom: 80px;
+        }
+
+        .steps-title .small {
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 400;
+            font-size: 0.74em;
+            display: block;
+            text-transform: none;
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            max-width: 1570px;
+            margin: 0 auto;
+        }
+
+        .step-card {
+            background: var(--white);
+            border: 1px solid var(--black);
+            border-radius: 10px;
+            padding: 32px;
+            box-shadow: 0 6px 0 0 var(--black);
+            text-align: right;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .step-number {
+            font-size: 64px;
+            font-weight: 900;
+            margin-bottom: 24px;
+            opacity: 0.9;
+        }
+
+        .step-title {
+            font-family: 'Rubik', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 24px;
+            line-height: 1;
+            margin-bottom: 19px;
+            text-transform: capitalize;
+            font-weight: 700;
+        }
+
+        .step-text {
+            font-size: 20px;
+            line-height: 1.7;
+            color: var(--black);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: #f9faf3;
+            padding: 120px 100px;
+            text-align: center;
+            min-height: 50vh;
+            max-height: 50vh;
+            border-radius: 60px 60px 0 0;
+        }
+
+        .cta-title {
+            font-size: clamp(26px, 5vw, 44px);
+        }
+
+        .signup-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--black);
+            color: var(--neon-green);
+            padding: 12px 24px;
+            margin-top: 32px;
+            border: 1px solid var(--black);
+            border-radius: 10px;
+            box-shadow: 0 6px 0 0 var(--black);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .signup-cta:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 0 0 var(--black);
+            background-color: var(--neon-green);
+            color: var(--black);
+        }
+
+        .hero-cta {
+            margin-top: 24px;
+        }
+
+        .management-cta {
+            margin-top: 24px;
+        }
+
+        /* Footer */
+        .site-footer {
+            background: #f9faf3;
+            padding: 36px 94px;
+        }
+
+        .site-footer .footer-inner {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            text-align: center;
+        }
+
+        .site-footer .footer-logo-link {
+            display: block;
+            text-decoration: none;
+            width: 120px;
+            flex-shrink: 0;
+        }
+
+        .site-footer .footer-logo {
+            width: 120px;
+            height: auto;
+            display: block;
+        }
+
+        .site-footer .footer-copyright {
+            font-size: 14px;
+            color: var(--gray-text);
+            margin: 0;
+            text-align: center;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        /* Scroll reveal: sections start hidden and animate in when in view */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(40px);
+        }
+
+        .scroll-reveal.fade-in-up {
+            opacity: 1;
+        }
+
+        /* Staggered card reveal: cards in a section animate in one by one */
+        .scroll-reveal .stagger-cards > * {
+            opacity: 0;
+            transform: translateY(24px);
+        }
+        .scroll-reveal.in-view .stagger-cards > * {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(1) { animation-delay: 0.15s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(2) { animation-delay: 0.3s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(3) { animation-delay: 0.45s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(4) { animation-delay: 0.6s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(5) { animation-delay: 0.75s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(6) { animation-delay: 0.9s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(7) { animation-delay: 1.05s; }
+        .scroll-reveal.in-view .stagger-cards > *:nth-child(8) { animation-delay: 1.2s; }
+
+        /* Heroicons – size utilities for icon images */
+        .heroicon {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .heroicon-sm {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .heroicon-lg {
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .hero-content,
+            .solution-section,
+            .qr-stands {
+                grid-template-columns: 1fr;
+                gap: 60px;
+            }
+
+            .qr-stands-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .stand-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .stand-image {
+                width: 100%;
+                max-width: 264px;
+                height: auto;
+                aspect-ratio: 1;
+                margin: 0 auto;
+            }
+
+            .stand-info {
+                min-width: 0;
+            }
+
+            .problem-grid,
+            .control-grid,
+            .branding-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-cards,
+            .steps-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            section {
+                padding: 80px 40px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0;
+            }
+
+            .problem-section .container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .problem-grid {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                grid-template-columns: unset;
+                overflow-x: auto;
+                overflow-y: hidden;
+                gap: 24px;
+                margin-top: 32px;
+                padding-bottom: 8px;
+                padding-left: 2px;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .problem-grid::-webkit-scrollbar {
+                display: none;
+            }
+
+            .problem-grid .card {
+                flex: 0 0 auto;
+                min-width: 280px;
+                max-width: 85vw;
+                scroll-snap-align: start;
+            }
+
+            .control-section .container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .control-grid {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                grid-template-columns: unset;
+                overflow-x: auto;
+                overflow-y: hidden;
+                gap: 24px;
+                margin-top: 32px;
+                padding-bottom: 8px;
+                padding-left: 2px;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .control-grid::-webkit-scrollbar {
+                display: none;
+            }
+
+            .control-grid .card {
+                flex: 0 0 auto;
+                min-width: 280px;
+                max-width: 85vw;
+                scroll-snap-align: start;
+            }
+
+            .steps-section .container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .steps-grid {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                grid-template-columns: unset;
+                overflow-x: auto;
+                overflow-y: hidden;
+                gap: 24px;
+                margin-top: 32px;
+                padding-bottom: 8px;
+                padding-left: 2px;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .steps-grid::-webkit-scrollbar {
+                display: none;
+            }
+
+            .steps-grid .step-card {
+                flex: 0 0 auto;
+                min-width: 280px;
+                max-width: 85vw;
+                scroll-snap-align: start;
+            }
+
+            section {
+                min-height: 70vh;
+            }
+
+            section,
+            .hero,
+            .problem-section,
+            .solution-section,
+            .menu-features,
+            .management-section,
+            .control-section,
+            .qr-stands,
+            .branding-section,
+            .testimonial-section,
+            .pricing-section,
+            .steps-section,
+            .cta-section {
+                padding: 80px 30px;
+            }
+
+            .hero-phones {
+                width: 100%;
+            }
+
+            .phone-mockup-1 .phone-frame {
+                width: 280px;
+                padding: 14px;
+                border-radius: 52px;
+            }
+
+            .phone-mockup-1 .phone-screen {
+                border-radius: 42px;
+            }
+
+            .phone-mockup-1 .phone-home-indicator {
+                width: 110px;
+                height: 5px;
+                bottom: 12px;
+            }
+
+            .phone-mockup-1 .phone-frame::before,
+            .phone-mockup-1 .phone-frame::after {
+                display: none;
+            }
+
+            .phone-mockup-1 {
+                transform: scale(0.9);
+            }
+
+            .hero-title,
+            .steps-title,
+            .cta-title {
+                font-size: 46px;
+            }
+
+            .section-title {
+                font-size: 46px;
+            }
+
+            .card-title {
+                font-size: 24px;
+            }
+
+            .testimonial-slider {
+                width: 100%;
+                max-width: 100%;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .testimonial-section .container,
+            .testimonial-section {
+                overflow-x: hidden;
+            }
+
+            .testimonial-track {
+                min-width: 0;
+            }
+
+            .testimonial-slide {
+                min-width: 0;
+            }
+
+            .testimonial-card {
+                flex-direction: column;
+                padding: 40px;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+
+            .testimonial-content {
+                min-width: 0;
+                padding: 0 4px;
+            }
+
+            .testimonial-image {
+                width: 200px;
+                height: 200px;
+            }
+
+            /* Top nav – mobile */
+            .top-nav {
+                padding: 20px 16px;
+            }
+
+            .top-nav .nav-inner {
+                flex-wrap: wrap;
+                gap: 16px;
+                justify-content: center;
+            }
+
+            .top-nav .nav-logo-link {
+                order: 1;
+                margin-right: auto;
+            }
+
+            .top-nav .nav-links {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 12px;
+                padding-top: 8px;
+                border-top: 1px solid rgba(0,0,0,0.08);
+                position: static;
+                left: auto;
+                transform: none;
+            }
+
+            .top-nav .nav-links a {
+                font-size: 14px;
+            }
+
+            .top-nav .nav-cta {
+                order: 2;
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            /* Footer – mobile */
+            .site-footer {
+                padding: 32px 20px;
+            }
+
+            .site-footer .footer-inner {
+                flex-direction: column;
+                gap: 24px;
+                text-align: center;
+            }
+
+            .site-footer .footer-logo-link {
+                margin: 0 auto;
+            }
+
+            .site-footer .footer-copyright {
+                text-align: center;
+            }
+        }
+
+        /* Extra small screens (< 420px) */
+        @media (max-width: 420px) {
+            section {
+                min-height: 70vh;
+            }
+
+            section,
+            .hero,
+            .problem-section,
+            .solution-section,
+            .menu-features,
+            .management-section,
+            .control-section,
+            .qr-stands,
+            .branding-section,
+            .testimonial-section,
+            .pricing-section,
+            .steps-section,
+            .cta-section {
+                padding: 48px 20px;
+            }
+
+            .hero-title,
+            .steps-title,
+            .cta-title {
+                font-size: 46px;
+            }
+
+            .section-title {
+                font-size:42px;
+            }
+
+            .section-subtitle {
+                font-size: 18px;
+            }
+
+            .problem-grid,
+            .control-grid,
+            .branding-grid {
+                gap: 24px;
+                margin-top: 32px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .card-title {
+                font-size: 20px;
+            }
+
+            .card-text {
+                font-size: 14px;
+            }
+
+            .testimonial-slider {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .testimonial-card {
+                padding: 24px;
+            }
+
+            .testimonial-image {
+                width: 160px;
+                height: 160px;
+            }
+
+            .testimonial-quote {
+                font-size: 24px;
+            }
+
+            .testimonial-author {
+                font-size: 16px;
+            }
+
+            .testimonial-content {
+                padding: 0 8px;
+            }
+
+            .testimonial-dots {
+                margin-top: 24px;
+            }
+
+            .stand-card {
+                flex-direction: column;
+                text-align: center;
+                padding: 24px;
+            }
+
+            .stand-image {
+                max-width: 220px;
+                margin: 0 auto;
+            }
+
+            .stand-info h3 {
+                font-size: 20px;
+            }
+
+            .stand-info p {
+                font-size: 13px;
+            }
+
+            .phone-mockup-1 {
+                transform: scale(0.9);
+            }
+
+            .phone-mockup-1 .phone-frame {
+                width: 260px;
+                padding: 14px;
+            }
+
+            .top-nav {
+                padding: 16px 12px;
+            }
+
+            .top-nav .nav-logo {
+                width: 100px;
+            }
+
+            .top-nav .nav-links a {
+                font-size: 13px;
+            }
+
+            .top-nav .nav-ctas {
+                gap: 8px;
+            }
+
+            .top-nav .nav-login,
+            .top-nav .nav-signup {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+
+            .site-footer {
+                padding: 24px 16px;
+            }
+
+            .dashboard-preview {
+                margin-top: 40px;
+            }
+
+            .steps-grid,
+            .feature-cards {
+                gap: 24px;
+            }
+
+            .step-card,
+            .pricing-card {
+                padding: 24px;
+            }
+
+            .cta-title {
+                font-size: 46px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="#hero" class="nav-logo-link">
+                <img src="Images/ordrmoor-logo.png" alt="OrdrMoor logo" class="nav-logo">
+            </a>
+            <div class="nav-links">
+                <a href="#features">المميزات</a>
+                <a href="#problem">المشكلة</a>
+                <a href="#testimonial">عملاءنا</a>
+                <a href="#pricing">الأسعار</a>
+            </div>
+            <div class="nav-ctas">
+                <a href="/signup" class="nav-signup" target="_top">سجل مطعمك دلوقتي</a>
+                <a href="/login" class="nav-login" target="_top">تسجيل الدخول</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero scroll-reveal">
+        <div class="hero-content">
+            <div>
+                <h1 class="hero-title">
+                    <span class="highlight">زود مبيعاتك</span> من المنيو
+                </h1>
+                <p class="hero-subtitle">
+                    حول المنيو لسيستم ذكي، شيك، بيسهل التشغيل وبيزود قيمة الأوردر.                </p>
+            </div>
+            <div class="hero-left">
+                <div class="hero-phones">
+                    <div class="phone-mockup phone-mockup-1">
+                        <div class="phone-frame">
+                            <div class="phone-screen">
+                                <video class="phone-screen-media" src="Images/mockup.webm" autoplay loop muted playsinline></video>
+                                <div class="phone-home-indicator" aria-hidden="true"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <!-- <section id="solution" class="solution-section scroll-reveal">
+        <div>
+            <h2 class="section-title" style="font-size: clamp(54px, 8vw, 118px); line-height: 1.2; margin-top: 40px;">
+                الناس<br>بتاكل <span class="highlight">بعنيها</span> 
+            </h2>
+        </div>
+        <div class="solution-image">
+            <img src="Images/Woman Phone Deal Image Jan 31 2026 1.png" alt="ست بتستخدم الموبايل">
+        </div>
+    </section> -->
+
+ <!-- Menu Features Section -->
+ <section id="features" class="menu-features scroll-reveal">
+    <div class="container">
+        <h2 class="section-title">
+
+            عملنا تصميم المنيو<span class="highlight">يجوع</span> ويخلي العميل يطلب <span class="highlight">اكثر!</span></h2>
+
+        <div class="feature-cards">
+            <div>
+                <div>
+                    <img src="Images/1.png" alt="منيو بصور كبيرة">
+                </div>
+                <div class="feature-label">صور كبيرة</div>
+            </div>
+
+            <div>
+                <div>
+                    <img src="Images/2.png" alt="منيو بعروض">
+                </div>
+                <div class="feature-label">عروض جذابة</div>
+            </div>
+
+            <div>
+                <div>
+                    <img src="Images/3.png" alt="نظام الولاء">
+                </div>
+                <div class="feature-label">نظام الولاء للعملاء</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <!-- Problem Section -->
+    <section id="problem" class="problem-section scroll-reveal">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">ليه المنيو العادي<span class="highlight highlight-red">بيخسرك فلوس</span></h2> 
+                <p class="section-subtitle">
+                    الموضوع أكبر من مجرد "شكل وحش". دي 4 مشاكل بتخسرك فلوس كل يوم وأنت مش واخد بالك.
+
+                </p>
+            </div>
+
+            <div class="problem-grid stagger-cards">
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/arrow-trending-down.svg" alt="تحديث الأسعار البطيء" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">تغيير الأسعار صعب</h3>
+                    <p class="card-text">بتستنى الديزاينر بالأيام عشان يغير سعر، وفي الوقت ده أنت بتخسر هامش ربحك.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/magnifying-glass-plus.svg" alt="مشكلة التكبير" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">مشكلة التكبير</h3>
+                    <p class="card-text">الزبون بيطلع عينه عشان يقرأ المنيو وده بيسد نفسه ومبيطلبش كتير.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/eye-slash.svg" alt="العروض المستخبية" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">العروض بتتدفن</h3>
+                    <p class="card-text">الكومبوهات اللي بتكسبك حلو بتستخبى وسط الكلام الكتير ومحدش بيشوفها.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/no-symbol.svg" alt="الزبون الطياري" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">الزبون الطياري</h3>
+                    <p class="card-text">الزبون بياكل ويمشي ومحدش عارف يوصله تاني عشان يرجع يطلب.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+   
+    <!-- Management Section -->
+    <section class="management-section scroll-reveal">
+        <div class="container">
+            <p class="section-subtitle">
+                وحلينا المشكلة دي ازاي؟
+            </p>
+            <h2 class="section-title"> عملنا نظام تحكم <span class="highlight">سهل</span> وسريع للمنيو </h2>
+
+            <div class="dashboard-preview">
+                <video src="Images/Menu-manage.webm" autoplay muted loop playsinline title="نظام إدارة المنيو"></video>
+            </div>
+        </div>
+    </section>
+
+    <!-- Control Features Section -->
+    <section id="control" class="control-section scroll-reveal">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">
+                    تحكم <span class="highlight">كامل</span> وبدون تاخير
+                </h2>
+                <p class="section-subtitle">
+                    وداعاً لانتظار الديزاينر. أنت المتحكم في كل تفصيلة.
+                </p>
+            </div>
+
+            <div class="control-grid stagger-cards">
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/arrow-path.svg" alt="تحديث الأسعار" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">تحديث الأسعار</h3>
+                    <p class="card-text">عدل الأسعار لحظياً في كل الفروع بضغطة زرار. ولا مصاريف طباعة ولا تعطيل.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/eye.svg" alt="إدارة النواقص" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">إدارة النواقص</h3>
+                    <p class="card-text">الصنف خلص؟ اخفيه فوراً من المنيو بتكة واحدة عشان محدش يطلبه ويتحرج.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/percent-badge.svg" alt="إدارة العروض" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">إدارة العروض</h3>
+                    <p class="card-text">زل عروض جديدة وكومبوهات في ثواني، وحطها في وش الزبون عشان يطلبها</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">
+                        <img class="heroicon" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/language.svg" alt="لغتين عربي وإنجليزي" style="width: 64px; height: 64px;">
+                    </div>
+                    <h3 class="card-title">لغتين (عربي/إنجليزي)</h3>
+                    <p class="card-text">السيستم بيحول بين العربي والإنجليزي بسلاسة عشان يناسب كل زباينك</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- QR Stands Section -->
+    <section id="qr-stands" class="qr-stands scroll-reveal">
+        <div class="qr-stands-header">
+            <h2 class="section-title">+ستاندات QR شيك</h2>
+            <p class="section-subtitle">شكل فخم يليق بترابيزة مطعمك</p>
+        </div>
+        <div class="qr-stands-cards stagger-cards">
+            <div class="stand-card">
+                <div class="stand-image">
+                    <img src="Images/acrylic Stand.png" alt="استاند أكريليك">
+                </div>
+                <div class="stand-info">
+                    <h3>استاند أكريليك</h3>
+                    <p>استاندات أكريليك مودرن، تستحمل وشكلها نظيف جداً</p>
+                </div>
+            </div>
+
+            <div class="stand-card">
+                <div class="stand-image">
+                    <img src="Images/Wood Stand.png" alt="استاند خشب">
+                </div>
+                <div class="stand-info">
+                    <h3>استاند خشب</h3>
+                    <p>خشب محفور ليزر، بيدي لمسة فخامة ودفء للمكان.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Branding Section -->
+    <!-- <section id="branding" class="branding-section scroll-reveal">
+        <div class="container">
+            <h2 class="section-title">
+                مبني لبراندك،وجاهز يكبر معاك
+            </h2>
+            <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+                حافظ على صورة براندك الاحترافية من غير أي تعقيدات تقنية.
+            </p>
+
+            <div class="branding-grid stagger-cards">
+                <div class="branding-card">
+                    <div class="branding-icon">
+                        <img src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/sparkles.svg" alt="براندنج سلس" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3 class="card-title">براندنج سلس</h3>
+                    <p class="card-text">بدون شعارات طرف تالت. نعدّل الواجهة عشان تناسب ألوانك وهويتك بالظبط.</p>
+                </div>
+
+                <div class="branding-card">
+                    <div class="branding-icon">
+                        <img src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/link.svg" alt="روابط مخصصة" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3 class="card-title">روابط مخصصة</h3>
+                    <p class="card-text">وداعاً للروابط العشوائية. لينك نظيف واحترافي زي <u>menu.yourbrand.com</u> يثق فيه الزباين.</p>
+                </div>
+
+                <div class="branding-card">
+                    <div class="branding-icon">
+                        <img src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/user-group.svg" alt="حسابات متعددة" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <h3 class="card-title">حسابات متعددة</h3>
+                    <p class="card-text">كل فريقك يقدر يدير المنيو من داشبورد واحد. مناسب للمشاريع الكبيرة.</p>
+                </div>
+            </div>
+        </div>
+    </section> -->
+
+    <!-- Testimonial Section -->
+    <section id="testimonial" class="testimonial-section scroll-reveal">
+        <div class="container">
+            <h2 class="section-title">
+                مطاعم وكافيهات واثقة فينا
+            </h2>
+            <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+                نتائج حقيقية من بيزنس زي بتاعك.
+            </p>
+
+            <div class="testimonial-slider">
+                <div class="testimonial-track" id="testimonialTrack">
+                    <div class="testimonial-slide">
+                        <div class="testimonial-card">
+                            <div class="testimonial-image">
+                                <img src="Images/LOGO1.png" alt="لوجو ١">
+                            </div>
+                            <div class="testimonial-content">
+                                <p class="testimonial-quote">
+                                    "بعد سنة واحدة، وصلنا لأكتر من مليون مشاهدة على اللينك"
+                                </p>
+                                <p class="testimonial-author">
+                                    عبدالله، برجر ريبابلك (القاهرة)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="testimonial-slide">
+                        <div class="testimonial-card">
+                            <div class="testimonial-image">
+                                <img src="Images/LOGO2.png" alt="لوجو ٢">
+                            </div>
+                            <div class="testimonial-content">
+                                <p class="testimonial-quote">
+                                    "تحديث المنيو بقى لعبة.. مبقناش نتشل عقبال ما الديزاينر يرد علينا"
+                                </p>
+                                <p class="testimonial-author">
+                                   مطعم وكافيه نور
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-dots" id="testimonialDots">
+                    <button type="button" class="testimonial-dot active" data-index="0" aria-label="عرض ١"></button>
+                    <button type="button" class="testimonial-dot" data-index="1" aria-label="عرض ٢"></button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing-section scroll-reveal">
+        <div class="container">
+            <h2 class="section-title">سعر بسيط.. وقيمة حقيقية</h2>
+            <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
+                اختار الخطة المناسبة لحجم مطعمك
+            </p>
+
+            <div class="pricing-toggle-wrap">
+                <div class="pricing-toggle" id="pricingToggle" role="tablist">
+                    <button type="button" data-interval="monthly" role="tab" aria-selected="false">شهري</button>
+                    <button type="button" class="active" data-interval="annual" role="tab" aria-selected="true">سنوي <span class="pricing-save-badge">وفر ٢٠٪</span></button>
+                </div>
+            </div>
+
+            <div class="pricing-grid stagger-cards">
+                <!-- 1: الاساسية (Basic) -->
+                <div class="pricing-card" data-monthly="2,400" data-annual="2,000">
+                    <p class="pricing-plan">الاساسية</p>
+                    <div class="pricing-amount">
+                        <span class="price" id="starterPrice">2,000</span>
+                        <span class="period" id="starterPeriod">/ شهرياً</span>
+                    </div>
+                    <div class="pricing-features">
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>عناصر منيو لا محدودة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>زيارات لا محدودة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>لينك خاص</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>لوحة تحكم</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2: المتقدمة (Advance) - في النص -->
+                <div class="pricing-card featured" data-monthly="3,600" data-annual="3,000">
+                    <div class="pricing-badge">الأكثر طلباً</div>
+                    <p class="pricing-plan">المتقدمة</p>
+                    <div class="pricing-amount">
+                        <span class="price">3,000</span>
+                        <span class="period">/ شهرياً</span>
+                    </div>
+                    <div class="pricing-features">
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>عناصر منيو لا محدودة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>زيارات لا محدودة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>لينك خاص</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>لوحة تحكم</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>مدير حساب</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3: الاحترافية (Pro) -->
+                <div class="pricing-card" data-monthly="6,000" data-annual="5,000">
+                    <p class="pricing-plan">الاحترافية</p>
+                    <div class="pricing-amount">
+                        <span class="price" id="proPrice">5,000</span>
+                        <span class="period" id="proPeriod">/ شهرياً</span>
+                    </div>
+                    <div class="pricing-features">
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>عناصر منيو لا محدودة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>زيارات لا محدودة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>لينك خاص</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>لوحة تحكم</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>مدير حساب</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>إدارة العروض</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>إدارة فروع متعددة</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>نظام الولاء</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>تقارير</span>
+                        </div>
+                        <div class="pricing-feature">
+                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                            <span>دعم فني</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Steps Section -->
+    <section id="steps" class="steps-section scroll-reveal">
+        <div class="container">
+            <h2 class="steps-title">
+                <span class="small">ازاي نبدا؟</span>
+                ابدأ شغل في <span class="highlight">٤٨ ساعة</span>
+            </h2>
+
+            <div class="steps-grid stagger-cards">
+                <!-- Step 1 -->
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">هات المنيو القديم</h3>
+                    <p class="step-text">كل اللي عليك تبعتلنا المنيو الـ PDF وصور الأكل بتاعتك.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">إحنا نجهز كل حاجة</h3>
+                    <p class="step-text">هنصمم المنيو على السيستم ونطبعلك الستاندات ونوصلها.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">استلم واشتغل</h3>
+                    <p class="step-text">استلم الستاندات جاهزة وابدأ بيع خلال 48 ساعة.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="cta" class="cta-section scroll-reveal">
+        <div class="container">
+            <h2 class="cta-title">يلا نعمل من المنيو بتاعك <span class="highlight">فلوس اكتر</span></h2>
+            <a href="/signup" class="signup-cta" target="_top">سجل مطعمك دلوقتي</a>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <a href="#hero" class="footer-logo-link">
+                <img src="Images/ordrmoor-logo.png" alt="OrdrMoor logo" class="footer-logo">
+            </a>
+            <p class="footer-copyright">
+                <a href="/signup" target="_top" style="color: inherit; font-weight: 600;">سجل مطعمك دلوقتي</a>
+                &nbsp;·&nbsp;
+                <a href="/login" target="_top" style="color: inherit; font-weight: 600;">تسجيل الدخول</a>
+            </p>
+            <p class="footer-copyright">© 2026 OrdrMoor. جميع الحقوق محفوظة.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll animation on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            function trackLandingCtaClickFromIframe(ctaName, ctaLocation, targetPath) {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(
+                        {
+                            type: 'landing_cta_click',
+                            ctaName: ctaName,
+                            ctaLocation: ctaLocation,
+                            targetPath: targetPath
+                        },
+                        window.location.origin
+                    );
+                }
+            }
+
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -100px 0px'
+            };
+
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('fade-in-up', 'in-view');
+                        if (!entry.target.classList.contains('scroll-reveal')) {
+                            observer.unobserve(entry.target);
+                        }
+                    } else {
+                        if (entry.target.classList.contains('scroll-reveal')) {
+                            entry.target.classList.remove('in-view', 'fade-in-up');
+                        }
+                    }
+                });
+            }, observerOptions);
+
+            // Observe sections – keep observing so highlight can re-animate when scrolling up/down
+            document.querySelectorAll('.scroll-reveal').forEach(el => {
+                observer.observe(el);
+            });
+
+            // Observe cards for scroll reveal only when NOT inside stagger-cards (stagger is driven by section)
+            document.querySelectorAll('.card, .step-card, .pricing-card, .branding-card, .stand-card').forEach(el => {
+                if (!el.closest('.stagger-cards')) observer.observe(el);
+            });
+
+            // Pricing toggle (Monthly / Annual)
+            (function() {
+                const toggle = document.getElementById('pricingToggle');
+                const cards = document.querySelectorAll('.pricing-card[data-monthly][data-annual]');
+                if (!toggle || !cards.length) return;
+                const buttons = toggle.querySelectorAll('button');
+                function applyInterval(interval) {
+                    buttons.forEach(function(btn) {
+                        var isAnnual = btn.dataset.interval === 'annual';
+                        btn.classList.toggle('active', isAnnual === (interval === 'annual'));
+                        btn.setAttribute('aria-selected', isAnnual === (interval === 'annual'));
+                    });
+                    cards.forEach(function(card) {
+                        var priceEl = card.querySelector('.price');
+                        var periodEl = card.querySelector('.period');
+                        if (priceEl) priceEl.textContent = interval === 'annual' ? card.dataset.annual : card.dataset.monthly;
+                        if (periodEl) periodEl.textContent = '/ شهرياً';
+                    });
+                }
+                applyInterval('annual');
+                toggle.addEventListener('click', function(e) {
+                    var btn = e.target.closest('button[data-interval]');
+                    if (btn) applyInterval(btn.dataset.interval);
+                });
+            })();
+
+            // Testimonial slider (2 items) – auto-advance (RTL-aware)
+            (function() {
+                const track = document.getElementById('testimonialTrack');
+                const dotsContainer = document.getElementById('testimonialDots');
+                if (!track || !dotsContainer) return;
+                const slides = track.querySelectorAll('.testimonial-slide');
+                const total = slides.length;
+                const isRtl = document.documentElement.getAttribute('dir') === 'rtl';
+                let index = 0;
+                function goTo(i) {
+                    index = (i + total) % total;
+                    var offset = index * 50;
+                    track.style.transform = isRtl ? 'translateX(' + offset + '%)' : 'translateX(-' + offset + '%)';
+                    const dots = dotsContainer.querySelectorAll('.testimonial-dot');
+                    dots.forEach(function(dot, d) {
+                        dot.classList.toggle('active', d === index);
+                    });
+                }
+                dotsContainer.addEventListener('click', function(e) {
+                    const dot = e.target.closest('.testimonial-dot');
+                    if (dot && dot.dataset.index != null) goTo(parseInt(dot.dataset.index, 10));
+                });
+                setInterval(function() { goTo(index + 1); }, 5000);
+            })();
+
+            // Track CTA clicks and forward them to parent app analytics.
+            document.addEventListener('click', function(e) {
+                var cta = e.target.closest('.nav-signup, .nav-login, .signup-cta, .site-footer a[href="/signup"], .site-footer a[href="/login"]');
+                if (!cta) return;
+
+                var href = cta.getAttribute('href') || '';
+                var ctaName = 'landing_cta';
+                var ctaLocation = 'landing_page';
+
+                if (cta.classList.contains('nav-signup')) {
+                    ctaName = 'nav_signup';
+                    ctaLocation = 'top_nav';
+                } else if (cta.classList.contains('nav-login')) {
+                    ctaName = 'nav_login';
+                    ctaLocation = 'top_nav';
+                } else if (cta.classList.contains('signup-cta')) {
+                    ctaName = 'bottom_signup';
+                    ctaLocation = 'cta_section';
+                } else if (cta.closest('.site-footer')) {
+                    ctaName = href === '/login' ? 'footer_login' : 'footer_signup';
+                    ctaLocation = 'footer';
+                }
+
+                trackLandingCtaClickFromIframe(ctaName, ctaLocation, href);
+            });
+        });
+    </script>
+
+</body>
+</html>
