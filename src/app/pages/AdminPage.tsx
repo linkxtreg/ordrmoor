@@ -5,6 +5,7 @@ import { MenusSidebar } from '@/app/components/MenusSidebar';
 import { MenuManagementContent } from '@/app/components/MenuManagementContent';
 import { GeneralInfoManagement } from '@/app/components/GeneralInfoManagement';
 import { AddressesManagement } from '@/app/components/AddressesManagement';
+import { OffersManagement } from '@/app/components/OffersManagement';
 import { Menu, GeneralInfo, BranchAddress } from '@/app/types/menu';
 import { menusApi, generalInfoApi, addressesApi } from '@/app/services/api';
 import { toast, Toaster } from 'sonner';
@@ -232,10 +233,7 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
             }}
           />
         ) : activeSection === 'offers' && isOffersEnabled ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('featurePages.offersTitle')}</h2>
-            <p className="text-gray-600">{t('featurePages.offersPlaceholder')}</p>
-          </div>
+          <OffersManagement />
         ) : activeSection === 'points' && isPointsEnabled ? (
           <div className="bg-white border border-gray-200 rounded-lg p-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('featurePages.pointsTitle')}</h2>

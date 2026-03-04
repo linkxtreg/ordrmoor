@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Star, AlertCircle } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
-import { customerMenuApi, menuItemsApi, categoriesApi, generalInfoApi, menusApi } from '../services/api';
+import type { OfferWithItems } from '../types/offers';
+import { customerMenuApi, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi } from '../services/api';
 import { trackMenuItemClick } from '../lib/analytics';
+import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
 import { toast } from 'sonner';
 import svgPaths from '@/imports/svg-t21ykul132';
 
@@ -37,6 +39,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [generalInfo, setGeneralInfo] = useState<GeneralInfo | null>(null);
+  const [offers, setOffers] = useState<OfferWithItems[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
@@ -160,6 +163,20 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         }
       }
       setGeneralInfo(infoData);
+      try {
+        const offersData = await offersApi.getAll();
+        setOffers(offersData);
+      } catch (error) {
+        // If feature is disabled for this tenant, this endpoint returns a 403 (feature_disabled).
+        // In that case we silently show the menu without offers.
+        if (
+          !(error instanceof Error) ||
+          (!error.message.includes('feature_disabled') && !error.message.includes('Feature is disabled'))
+        ) {
+          console.warn('Could not load offers:', error);
+        }
+        setOffers([]);
+      }
 
       // Migrate old data structure to new structure
       const migratedMenuItems = menuData.map(item => {
@@ -346,6 +363,24 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     });
     return grouped;
   }, [categories, menuItems]);
+
+  const activeOfferByItemId = useMemo(() => {
+    const map = new Map<string, OfferWithItems>();
+    for (const item of menuItems) {
+      const defaultVariantId =
+        Array.isArray(item.priceVariants) && item.priceVariants.length > 0
+          ? item.priceVariants[0]?.id
+          : undefined;
+      const offer = getActiveOfferForItem(item.id, defaultVariantId, offers);
+      if (offer) map.set(item.id, offer);
+    }
+    return map;
+  }, [menuItems, offers]);
+
+  const featuredOfferItems = useMemo(
+    () => menuItems.filter((item) => hasActiveOfferForItem(item.id, offers)),
+    [menuItems, offers]
+  );
 
   // Dual-language: show name/description by customer's selected language
   const getItemName = (item: MenuItem) =>
@@ -602,6 +637,54 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         </div>
       </div>
 
+      {/* Active offers strip: right under tabs */}
+      {featuredOfferItems.length > 0 && (
+        <div style={{ backgroundColor: `${brandColor}1A` }}>
+          <div className="overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-3 w-max p-5">
+              {featuredOfferItems.map((item) => {
+                const offer = activeOfferByItemId.get(item.id) ?? null;
+                const basePrice =
+                  Array.isArray(item.priceVariants) && item.priceVariants.length > 0
+                    ? item.priceVariants[0].price
+                    : item.price ?? 0;
+                const discounted = getDiscountedPrice(basePrice, offer);
+                return (
+                  <div
+                    key={`offer-strip-${item.id}`}
+                    className="w-[220px] rounded-xl border border-gray-200 bg-white overflow-hidden shrink-0"
+                  >
+                    {item.image ? (
+                      <img src={item.image} alt={getItemName(item)} className="h-[220px] w-full object-cover" />
+                    ) : (
+                      <div className="h-[220px] w-full bg-gray-100" />
+                    )}
+                    <div className="p-3">
+                      <p className={`font-semibold text-xl text-[#18181b] uppercase tracking-tight line-clamp-1 ${language === 'en' ? 'text-left' : 'text-right'}`}>
+                        {getItemName(item)}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-xs text-gray-500 line-through">{basePrice} {t.egp}</span>
+                        <span className="font-bold text-2xl tracking-tight" style={{ color: brandColor }}>{discounted}</span>
+                        <span className="text-sm font-normal text-gray-500">{t.egp}</span>
+                      </div>
+                      {offer && (
+                        <span
+                          className="inline-flex mt-2 rounded-full px-2 py-0.5 text-[11px] font-bold text-white"
+                          style={{ backgroundColor: brandColor }}
+                        >
+                          {offer.discountPct}% OFF
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Menu Items - Continuous List */}
       <div className="flex flex-col pb-6">
         {/* Category Sections - All categories shown in sequence */}
@@ -616,12 +699,15 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
               data-category={category.name}
               className="scroll-mt-[100px]"
             >
-              {categoryItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white overflow-hidden mb-4 cursor-pointer"
-                  onClick={() => handleMenuItemClick(item)}
-                >
+              {categoryItems.map((item) => {
+                const selectedVariant = getSelectedVariant(item);
+                const activeOffer = getActiveOfferForItem(item.id, selectedVariant?.id, offers);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white overflow-hidden mb-4 cursor-pointer"
+                    onClick={() => handleMenuItemClick(item)}
+                  >
                   {/* Item Image - hidden when no image or when image fails to load */}
                   {item.image && !failedImageIds.has(item.id) && (
                     <div className="w-full flex justify-center overflow-hidden">
@@ -646,17 +732,24 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                       >
                         {getCategoryDisplayName(item.category)}
                       </p>
-                      {item.isPopular && (
-                        <div 
-                          className="px-2 py-1 rounded-lg flex items-center gap-1.5"
-                          style={{ backgroundColor: brandColor }}
-                        >
-                          <Star size={12} fill="white" stroke="white" />
-                          <p className="font-bold text-[10px] text-white uppercase tracking-wider">
-                            {t.popular}
-                          </p>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {item.isPopular && (
+                          <div 
+                            className="px-2 py-1 rounded-lg flex items-center gap-1.5"
+                            style={{ backgroundColor: brandColor }}
+                          >
+                            <Star size={12} fill="white" stroke="white" />
+                            <p className="font-bold text-[10px] text-white uppercase tracking-wider">
+                              {t.popular}
+                            </p>
+                          </div>
+                        )}
+                        {activeOffer && (
+                          <div className="px-2 py-1 rounded-lg bg-[#101010] text-[#cfff5e]">
+                            <p className="font-bold text-[10px] uppercase tracking-wider">{activeOffer.discountPct}% OFF</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Item Name (by language) */}
@@ -673,8 +766,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                     {item.priceVariants && item.priceVariants.length > 1 && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {item.priceVariants.map((v) => {
-                          const selected = getSelectedVariant(item);
-                          const isSelected = selected?.id === v.id;
+                          const isSelected = selectedVariant?.id === v.id;
                           return (
                             <button
                               key={v.id}
@@ -695,16 +787,28 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                       </div>
                     )}
 
-                    {/* Price: show only the price set in admin (matrix variant or single item price). No discounted/crossed-out unless we add it in admin. */}
+                    {/* Price with active offer support */}
                     <div className="mt-2 mb-2 flex flex-wrap items-baseline gap-1.5">
                       {(() => {
                         const variant = getSelectedVariant(item);
-                        const displayPrice = variant ? variant.price : item.price ?? 0;
+                        const basePrice = variant ? variant.price : item.price ?? 0;
+                        const discountedPrice = getDiscountedPrice(basePrice, activeOffer);
+                        if (!activeOffer) {
+                          return (
+                            <p className="flex items-baseline gap-1.5">
+                              <span className="font-bold text-2xl tracking-tight text-[#000]">{basePrice}</span>
+                              <span className="text-sm font-normal text-gray-500">{t.egp}</span>
+                            </p>
+                          );
+                        }
                         return (
-                          <p className="flex items-baseline gap-1.5">
-                            <span className="font-bold text-2xl tracking-tight text-[#000]">{displayPrice}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500 line-through">{basePrice} {t.egp}</span>
+                            <span className="font-bold text-2xl tracking-tight" style={{ color: brandColor }}>
+                              {discountedPrice}
+                            </span>
                             <span className="text-sm font-normal text-gray-500">{t.egp}</span>
-                          </p>
+                          </div>
                         );
                       })()}
                     </div>
@@ -713,7 +817,8 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                   {/* Item Divider */}
                   <div className="h-px mx-6 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                 </div>
-              ))}
+                );
+              })}
             </div>
           );
         })}

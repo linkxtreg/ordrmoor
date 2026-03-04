@@ -1,4 +1,5 @@
 import { Menu, MenuItem, Category, GeneralInfo, BranchAddress } from '../types/menu';
+import type { OfferUpsertInput, OfferWithItems } from '../types/offers';
 import { resolveFeatureFlags, type FeatureFlags } from '../types/features';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
@@ -99,7 +100,8 @@ function invalidateCacheByPath(pathPart: string): void {
       pathPart.includes('/menu-items') ||
       pathPart.includes('/categories') ||
       pathPart.includes('/general-info') ||
-      pathPart.includes('/addresses'))
+      pathPart.includes('/addresses') ||
+      pathPart.includes('/offers'))
   ) {
     invalidateCacheByPath('/menu-bundle');
   }
@@ -517,6 +519,72 @@ export const addressesApi = {
     if (!result.success) throw new Error(result.error || 'Failed to reorder addresses');
     invalidateCacheByPath('/addresses');
     return result.data;
+  },
+};
+
+async function parseOffersJson<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('Empty response');
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    if (response.status === 404) {
+      throw new Error(
+        'Offers API is not deployed yet. Run: supabase functions deploy make-server-47a828b2'
+      );
+    }
+    throw new Error(`Invalid response: ${trimmed.slice(0, 100)}${trimmed.length > 100 ? '...' : ''}`);
+  }
+}
+
+// ============================================
+// OFFERS API
+// ============================================
+
+export const offersApi = {
+  async getAll(): Promise<OfferWithItems[]> {
+    const url = `${API_BASE}/offers`;
+    return getCachedJson<OfferWithItems[]>(url, async () => {
+      const response = await fetchWithRetry(url, { headers: getHeaders() });
+      const result = await parseOffersJson<{ success?: boolean; data?: OfferWithItems[]; error?: string }>(response);
+      if (!result.success) throw new Error(result.error || 'Failed to fetch offers');
+      return result.data ?? [];
+    });
+  },
+
+  async create(payload: OfferUpsertInput): Promise<OfferWithItems> {
+    const response = await fetchWithRetry(`${API_BASE}/offers`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const result = await parseOffersJson<{ success?: boolean; data?: OfferWithItems; error?: string }>(response);
+    if (!result.success || !result.data) throw new Error(result.error || 'Failed to create offer');
+    invalidateCacheByPath('/offers');
+    return result.data;
+  },
+
+  async update(id: string, payload: OfferUpsertInput): Promise<OfferWithItems> {
+    const response = await fetchWithRetry(`${API_BASE}/offers/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const result = await parseOffersJson<{ success?: boolean; data?: OfferWithItems; error?: string }>(response);
+    if (!result.success || !result.data) throw new Error(result.error || 'Failed to update offer');
+    invalidateCacheByPath('/offers');
+    return result.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    const response = await fetchWithRetry(`${API_BASE}/offers/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    const result = await parseOffersJson<{ success?: boolean; error?: string }>(response);
+    if (!result.success) throw new Error(result.error || 'Failed to delete offer');
+    invalidateCacheByPath('/offers');
   },
 };
 

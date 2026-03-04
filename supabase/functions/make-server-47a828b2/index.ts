@@ -102,6 +102,18 @@ type BranchAddress = {
   order?: number;
 };
 
+type OfferRecord = {
+  id: string;
+  name: string;
+  discountPct: number;
+  startDate: string;
+  endDate?: string | null;
+  isActive: boolean;
+  itemIds: string[];
+  createdAt: string;
+  updatedAt?: string;
+};
+
 type TenantRecord = {
   slug: string;
   name?: string;
@@ -152,6 +164,62 @@ function normalizeAddress(input: unknown): BranchAddress | null {
   const order = typeof data.order === "number" ? data.order : undefined;
   if (!name) return null;
   return { id, name, mapUrl, order };
+}
+
+function normalizeOffer(input: unknown): OfferRecord | null {
+  if (!input || typeof input !== "object") return null;
+  const data = input as Record<string, unknown>;
+  const id = typeof data.id === "string" && data.id.trim() ? data.id.trim() : crypto.randomUUID();
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  const discountRaw = Number(data.discountPct);
+  const discountPct = Number.isFinite(discountRaw) ? Math.max(1, Math.min(99, Math.round(discountRaw * 100) / 100)) : NaN;
+  const startDate = typeof data.startDate === "string" ? data.startDate.trim() : "";
+  const endDateRaw = typeof data.endDate === "string" ? data.endDate.trim() : "";
+  const endDate = endDateRaw ? endDateRaw : null;
+  const isActive = typeof data.isActive === "boolean" ? data.isActive : true;
+  const targetIdsRaw = Array.isArray(data.itemIds) ? data.itemIds : [];
+  const itemIds = Array.from(
+    new Set(
+      targetIdsRaw
+        .map((item) => (typeof item === "string" ? item.trim() : ""))
+        .filter((targetId) => {
+          if (!targetId) return false;
+          const parsed = parseOfferTargetId(targetId);
+          return !!parsed.menuItemId;
+        })
+    )
+  );
+  const createdAt =
+    typeof data.createdAt === "string" && data.createdAt.trim()
+      ? data.createdAt
+      : new Date().toISOString();
+  const updatedAt =
+    typeof data.updatedAt === "string" && data.updatedAt.trim()
+      ? data.updatedAt
+      : undefined;
+
+  if (!name) return null;
+  if (!Number.isFinite(discountPct) || discountPct < 1 || discountPct > 99) return null;
+  if (!startDate) return null;
+  if (endDate && endDate < startDate) return null;
+  if (itemIds.length === 0) return null;
+
+  return {
+    id,
+    name,
+    discountPct,
+    startDate,
+    endDate,
+    isActive,
+    itemIds,
+    createdAt,
+    updatedAt,
+  };
+}
+
+function parseOfferTargetId(targetId: string): { menuItemId: string; variantId?: string } {
+  const [menuItemId, variantId] = targetId.split("::");
+  return { menuItemId, variantId: variantId || undefined };
 }
 
 const DEFAULT_GENERAL_INFO = {
@@ -1074,6 +1142,162 @@ app.put("/addresses/reorder/items", reorderAddresses);
 app.put("/make-server-47a828b2/addresses/reorder/items", reorderAddresses);
 app.put("/addresses/reorder", reorderAddresses);
 app.put("/make-server-47a828b2/addresses/reorder", reorderAddresses);
+
+// Offers
+function toOfferView(offer: OfferRecord, menuItemById: Map<string, any>) {
+  return {
+    ...offer,
+    items: offer.itemIds.map((targetId) => {
+      const { menuItemId, variantId } = parseOfferTargetId(targetId);
+      const item = menuItemById.get(menuItemId);
+      const variant =
+        variantId && Array.isArray(item?.priceVariants)
+          ? item.priceVariants.find((entry: any) => entry?.id === variantId)
+          : null;
+      const name =
+        typeof item?.nameEn === "string" && item.nameEn.trim()
+          ? item.nameEn
+          : typeof item?.name === "string" && item.name.trim()
+          ? item.name
+          : menuItemId || targetId;
+      const variantName =
+        variant && (variant.nameEn || variant.name || variant.nameAr)
+          ? (variant.nameEn || variant.name || variant.nameAr)
+          : undefined;
+      const price =
+        typeof variant?.price === "number"
+          ? variant.price
+          : typeof item?.price === "number"
+          ? item.price
+          : Array.isArray(item?.priceVariants) && item.priceVariants[0] && typeof item.priceVariants[0].price === "number"
+          ? item.priceVariants[0].price
+          : undefined;
+      return { targetId, menuItemId, variantId, menuItemName: name, variantName, menuItemPrice: price };
+    }),
+  };
+}
+
+async function listOffers(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "offers");
+    if (!featureCheck.ok) return featureCheck.res;
+
+    const tkv = tenantKv(tenantSlug);
+    const [offersRaw, menuItems] = await Promise.all([
+      tkv.getByPrefix("offer:"),
+      tkv.getByPrefix("menu-item:"),
+    ]);
+
+    const menuItemById = new Map<string, any>();
+    for (const item of menuItems) {
+      if (item?.id && typeof item.id === "string") {
+        menuItemById.set(item.id, item);
+      }
+    }
+
+    const offers = offersRaw
+      .map((row) => normalizeOffer(row))
+      .filter((row): row is OfferRecord => row !== null)
+      .sort((a, b) => {
+        const aTime = new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      })
+      .map((offer) => toOfferView(offer, menuItemById));
+
+    return c.json({ success: true, data: offers });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.get("/offers", listOffers);
+app.get("/make-server-47a828b2/offers", listOffers);
+
+async function createOffer(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "offers");
+    if (!featureCheck.ok) return featureCheck.res;
+
+    const tkv = tenantKv(tenantSlug);
+    const body = await c.req.json();
+    const normalized = normalizeOffer({
+      ...body,
+      id: body?.id || crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    if (!normalized) {
+      return c.json({ success: false, error: "Invalid offer payload" }, 400);
+    }
+
+    await tkv.set(`offer:${normalized.id}`, normalized);
+    const menuItems = await tkv.getByPrefix("menu-item:");
+    const menuItemById = new Map<string, any>();
+    for (const item of menuItems) {
+      if (item?.id && typeof item.id === "string") menuItemById.set(item.id, item);
+    }
+    return c.json({ success: true, data: toOfferView(normalized, menuItemById) });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.post("/offers", createOffer);
+app.post("/make-server-47a828b2/offers", createOffer);
+
+async function updateOffer(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "offers");
+    if (!featureCheck.ok) return featureCheck.res;
+
+    const tkv = tenantKv(tenantSlug);
+    const id = c.req.param("id");
+    const existing = await tkv.get(`offer:${id}`);
+    if (!existing) return c.json({ success: false, error: "Offer not found" }, 404);
+    const body = await c.req.json();
+    const normalized = normalizeOffer({
+      ...(existing || {}),
+      ...body,
+      id,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    if (!normalized) {
+      return c.json({ success: false, error: "Invalid offer payload" }, 400);
+    }
+
+    await tkv.set(`offer:${id}`, normalized);
+    const menuItems = await tkv.getByPrefix("menu-item:");
+    const menuItemById = new Map<string, any>();
+    for (const item of menuItems) {
+      if (item?.id && typeof item.id === "string") menuItemById.set(item.id, item);
+    }
+    return c.json({ success: true, data: toOfferView(normalized, menuItemById) });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.put("/offers/:id", updateOffer);
+app.put("/make-server-47a828b2/offers/:id", updateOffer);
+
+async function deleteOffer(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "offers");
+    if (!featureCheck.ok) return featureCheck.res;
+
+    const tkv = tenantKv(tenantSlug);
+    const id = c.req.param("id");
+    await tkv.del(`offer:${id}`);
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.delete("/offers/:id", deleteOffer);
+app.delete("/make-server-47a828b2/offers/:id", deleteOffer);
 
 // Image upload
 app.post("/upload-image", async (c) => {
