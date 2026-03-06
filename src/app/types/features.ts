@@ -12,9 +12,9 @@ export const FEATURE_DEFINITIONS = [
     defaultValue: false,
   },
   {
-    key: 'points',
-    label: 'Points',
-    description: 'Show the Points page in tenant admin.',
+    key: 'loyalty',
+    label: 'Loyalty',
+    description: 'Show the Loyalty page in tenant admin.',
     defaultValue: false,
   },
 ] as const;

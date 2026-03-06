@@ -17,6 +17,7 @@ const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const DigitalMenuLandingPage = React.lazy(() => import('./pages/DigitalMenuLandingPage'));
 const UniversalLoginPage = React.lazy(() => import('./pages/UniversalLoginPage'));
+const LoyaltyPage = React.lazy(() => import('./pages/LoyaltyPage'));
 
 function getTrackedRouteMeta(pathname: string): { tenantSlug?: string; menuSlug?: string } | null {
   if (pathname === '/' || pathname === '/signup') {
@@ -129,6 +130,7 @@ export default function App() {
         { index: true, element: <Navigate to="menu" replace /> },
         { path: 'menu', element: withSuspense(<CustomerMenuPage />) },
         { path: 'menu/:slug', element: withSuspense(<CustomerMenuPage />) },
+        { path: 'loyalty', element: withSuspense(<LoyaltyPage />) },
       ],
     },
     { path: '/super-admin', element: <SuperAdminRoute /> },

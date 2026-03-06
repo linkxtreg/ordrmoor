@@ -6,6 +6,7 @@ import { MenuManagementContent } from '@/app/components/MenuManagementContent';
 import { GeneralInfoManagement } from '@/app/components/GeneralInfoManagement';
 import { AddressesManagement } from '@/app/components/AddressesManagement';
 import { OffersManagement } from '@/app/components/OffersManagement';
+import { LoyaltyManagement } from '@/app/components/LoyaltyManagement';
 import { Menu, GeneralInfo, BranchAddress } from '@/app/types/menu';
 import { menusApi, generalInfoApi, addressesApi } from '@/app/services/api';
 import { toast, Toaster } from 'sonner';
@@ -105,21 +106,21 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
   );
   const isAddressesEnabled = isEnabled('addresses');
   const isOffersEnabled = isEnabled('offers');
-  const isPointsEnabled = isEnabled('points');
+  const isLoyaltyEnabled = isEnabled('loyalty');
 
   const extraNavItems = useMemo(
     () => [
       ...(isOffersEnabled
         ? [{ key: 'offers', label: t('layout.offers'), icon: <Tag size={20} /> }]
         : []),
-      ...(isPointsEnabled
-        ? [{ key: 'points', label: t('layout.points'), icon: <Coins size={20} /> }]
+      ...(isLoyaltyEnabled
+        ? [{ key: 'loyalty', label: t('layout.loyalty'), icon: <Coins size={20} /> }]
         : []),
       ...(isAddressesEnabled
         ? [{ key: 'addresses', label: t('layout.addresses'), icon: <MapPin size={20} /> }]
         : []),
     ],
-    [isAddressesEnabled, isOffersEnabled, isPointsEnabled, t]
+    [isAddressesEnabled, isOffersEnabled, isLoyaltyEnabled, t]
   );
 
   useEffect(() => {
@@ -129,10 +130,10 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
     if (activeSection === 'offers' && !isOffersEnabled) {
       setActiveSection('general');
     }
-    if (activeSection === 'points' && !isPointsEnabled) {
+    if (activeSection === 'loyalty' && !isLoyaltyEnabled) {
       setActiveSection('general');
     }
-  }, [activeSection, isAddressesEnabled, isOffersEnabled, isPointsEnabled]);
+  }, [activeSection, isAddressesEnabled, isOffersEnabled, isLoyaltyEnabled]);
 
   useEffect(() => {
     if (!isAddressesEnabled) return;
@@ -234,11 +235,8 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
           />
         ) : activeSection === 'offers' && isOffersEnabled ? (
           <OffersManagement />
-        ) : activeSection === 'points' && isPointsEnabled ? (
-          <div className="bg-white border border-gray-200 rounded-lg p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('featurePages.pointsTitle')}</h2>
-            <p className="text-gray-600">{t('featurePages.pointsPlaceholder')}</p>
-          </div>
+        ) : activeSection === 'loyalty' && isLoyaltyEnabled ? (
+          <LoyaltyManagement />
         ) : null}
       </AdminLayout>
       <Toaster />

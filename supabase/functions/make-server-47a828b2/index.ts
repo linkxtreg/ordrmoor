@@ -1299,6 +1299,345 @@ async function deleteOffer(c: any) {
 app.delete("/offers/:id", deleteOffer);
 app.delete("/make-server-47a828b2/offers/:id", deleteOffer);
 
+// ============================================
+// LOYALTY STAMP CARD
+// ============================================
+
+function generateStampSvg(restaurantName: string, seed: number, brandColor?: string): string {
+  const rng = (s: number) => {
+    let x = s;
+    return () => { x = (x * 1103515245 + 12345) & 0x7fffffff; return x / 0x7fffffff; };
+  };
+  const rand = rng(seed);
+
+  const colors = [
+    "#B8860B", "#8B0000", "#2F4F4F", "#191970", "#4B0082",
+    "#006400", "#8B4513", "#800020", "#36454F", "#704214",
+  ];
+  const primary = brandColor || colors[Math.floor(rand() * colors.length)];
+
+  const initials = restaurantName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+
+  const teethCount = 28 + Math.floor(rand() * 20);
+  const innerRingStyle = Math.floor(rand() * 4);
+  const outerDecoStyle = Math.floor(rand() * 3);
+
+  let teethPath = "";
+  for (let i = 0; i < teethCount; i++) {
+    const angle = (2 * Math.PI * i) / teethCount;
+    const nextAngle = (2 * Math.PI * (i + 0.5)) / teethCount;
+    const outerR = 118;
+    const innerR = 112;
+    const x1 = 130 + outerR * Math.cos(angle);
+    const y1 = 130 + outerR * Math.sin(angle);
+    const x2 = 130 + innerR * Math.cos(nextAngle);
+    const y2 = 130 + innerR * Math.sin(nextAngle);
+    teethPath += `M${x1.toFixed(1)},${y1.toFixed(1)} L${x2.toFixed(1)},${y2.toFixed(1)} `;
+  }
+
+  let innerRing = "";
+  if (innerRingStyle === 0) {
+    innerRing = `<circle cx="130" cy="130" r="90" fill="none" stroke="${primary}" stroke-width="2"/>
+      <circle cx="130" cy="130" r="86" fill="none" stroke="${primary}" stroke-width="0.5"/>`;
+  } else if (innerRingStyle === 1) {
+    const dashCount = 40 + Math.floor(rand() * 20);
+    innerRing = `<circle cx="130" cy="130" r="88" fill="none" stroke="${primary}" stroke-width="2" stroke-dasharray="${(2 * Math.PI * 88 / dashCount * 0.6).toFixed(1)} ${(2 * Math.PI * 88 / dashCount * 0.4).toFixed(1)}"/>`;
+  } else if (innerRingStyle === 2) {
+    let dots = "";
+    const dotCount = 24 + Math.floor(rand() * 12);
+    for (let i = 0; i < dotCount; i++) {
+      const a = (2 * Math.PI * i) / dotCount;
+      dots += `<circle cx="${(130 + 88 * Math.cos(a)).toFixed(1)}" cy="${(130 + 88 * Math.sin(a)).toFixed(1)}" r="1.5" fill="${primary}"/>`;
+    }
+    innerRing = dots;
+  } else {
+    innerRing = `<circle cx="130" cy="130" r="90" fill="none" stroke="${primary}" stroke-width="1.5"/>
+      <circle cx="130" cy="130" r="87" fill="none" stroke="${primary}" stroke-width="1.5"/>`;
+  }
+
+  let outerDeco = "";
+  if (outerDecoStyle === 0) {
+    outerDeco = `<circle cx="130" cy="130" r="105" fill="none" stroke="${primary}" stroke-width="3"/>
+      <circle cx="130" cy="130" r="100" fill="none" stroke="${primary}" stroke-width="1"/>`;
+  } else if (outerDecoStyle === 1) {
+    let stars = "";
+    const starCount = 8 + Math.floor(rand() * 6);
+    for (let i = 0; i < starCount; i++) {
+      const a = (2 * Math.PI * i) / starCount;
+      const cx = 130 + 102 * Math.cos(a);
+      const cy = 130 + 102 * Math.sin(a);
+      stars += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2" fill="${primary}"/>`;
+    }
+    outerDeco = `<circle cx="130" cy="130" r="105" fill="none" stroke="${primary}" stroke-width="2"/>${stars}`;
+  } else {
+    outerDeco = `<circle cx="130" cy="130" r="106" fill="none" stroke="${primary}" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <circle cx="130" cy="130" r="100" fill="none" stroke="${primary}" stroke-width="2"/>`;
+  }
+
+  const fontSize = initials.length > 2 ? 32 : 40;
+  const nameDisplay = restaurantName.length <= 20 ? restaurantName : initials;
+  const nameFontSize = nameDisplay.length > 12 ? 9 : nameDisplay.length > 8 ? 10 : 12;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" width="260" height="260">
+  <circle cx="130" cy="130" r="120" fill="none" stroke="${primary}" stroke-width="2"/>
+  <path d="${teethPath}" stroke="${primary}" stroke-width="1.5" fill="none"/>
+  ${outerDeco}
+  ${innerRing}
+  <circle cx="130" cy="130" r="75" fill="none" stroke="${primary}" stroke-width="1"/>
+  <text x="130" y="125" text-anchor="middle" dominant-baseline="middle" font-family="Georgia, 'Times New Roman', serif" font-size="${fontSize}" font-weight="bold" fill="${primary}" letter-spacing="3">${initials}</text>
+  <text x="130" y="155" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="${nameFontSize}" fill="${primary}" letter-spacing="1">${nameDisplay}</text>
+  <path id="stampArcTop" d="M 40,130 A 90,90 0 0,1 220,130" fill="none"/>
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="10" fill="${primary}" letter-spacing="2">
+    <textPath href="#stampArcTop" startOffset="50%" text-anchor="middle">★ REWARD EARNED ★</textPath>
+  </text>
+  <path id="stampArcBot" d="M 220,130 A 90,90 0 0,1 40,130" fill="none"/>
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="10" fill="${primary}" letter-spacing="2">
+    <textPath href="#stampArcBot" startOffset="50%" text-anchor="middle">✦ LOYALTY STAMP ✦</textPath>
+  </text>
+</svg>`;
+}
+
+type LoyaltyCustomer = {
+  phone: string;
+  visitCount: number;
+  lastVisitDate: string;
+  rewardUnlocked: boolean;
+  rewardUnlockedAt: string | null;
+  createdAt: string;
+};
+
+function normalizePhone(raw: string): string {
+  return raw.replace(/[^\d+]/g, "");
+}
+
+function phoneToKey(phone: string): string {
+  return `loyalty-customer:${normalizePhone(phone)}`;
+}
+
+function todayDateStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Admin: Get loyalty program
+async function getLoyaltyProgram(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "loyalty");
+    if (!featureCheck.ok) return featureCheck.res;
+    const tkv = tenantKv(tenantSlug);
+    const program = await tkv.get("loyalty-program");
+    return c.json({ success: true, data: program || null });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.get("/loyalty/program", getLoyaltyProgram);
+app.get("/make-server-47a828b2/loyalty/program", getLoyaltyProgram);
+
+// Admin: Save loyalty program
+async function saveLoyaltyProgram(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "loyalty");
+    if (!featureCheck.ok) return featureCheck.res;
+    const tkv = tenantKv(tenantSlug);
+    const body = await c.req.json();
+    const { name, rewardDescription, visitsNeeded, active } = body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return c.json({ success: false, error: "Program name is required" }, 400);
+    }
+    if (!rewardDescription || typeof rewardDescription !== "string" || !rewardDescription.trim()) {
+      return c.json({ success: false, error: "Reward description is required" }, 400);
+    }
+    const goal = Number(visitsNeeded);
+    if (!Number.isFinite(goal) || goal < 1 || goal > 100) {
+      return c.json({ success: false, error: "Visits needed must be between 1 and 100" }, 400);
+    }
+
+    const existing = await tkv.get("loyalty-program");
+    let stampSvg = existing?.stampSvg || "";
+    let stampSeed = existing?.stampSeed ?? 0;
+    const createdAt = existing?.createdAt || new Date().toISOString();
+
+    if (!stampSvg) {
+      stampSeed = Math.floor(Math.random() * 2147483647);
+      let brandColor: string | undefined;
+      try {
+        const gi = await tkv.get("general-info");
+        if (gi?.brandColor) brandColor = gi.brandColor;
+      } catch { /* ignore */ }
+      const tenants = await getTenantsList();
+      const tenant = tenants.find((t) => t.slug === tenantSlug);
+      const displayName = tenant?.name || name.trim();
+      stampSvg = generateStampSvg(displayName, stampSeed, brandColor);
+    }
+
+    const program = {
+      name: name.trim(),
+      rewardDescription: rewardDescription.trim(),
+      visitsNeeded: goal,
+      active: active !== false,
+      stampSvg,
+      stampSeed,
+      createdAt,
+    };
+    await tkv.set("loyalty-program", program);
+    return c.json({ success: true, data: program });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.put("/loyalty/program", saveLoyaltyProgram);
+app.put("/make-server-47a828b2/loyalty/program", saveLoyaltyProgram);
+
+// Admin: Get loyalty stats
+async function getLoyaltyStats(c: any) {
+  try {
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const featureCheck = await requireFeature(c, tenantSlug, "loyalty");
+    if (!featureCheck.ok) return featureCheck.res;
+    const tkv = tenantKv(tenantSlug);
+    const customers: LoyaltyCustomer[] = await tkv.getByPrefix("loyalty-customer:");
+
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    let visitsThisMonth = 0;
+    let rewardsThisMonth = 0;
+    for (const cust of customers) {
+      if (cust.lastVisitDate >= monthStart) {
+        visitsThisMonth += cust.visitCount;
+      }
+      if (cust.rewardUnlocked && cust.rewardUnlockedAt && cust.rewardUnlockedAt >= monthStart) {
+        rewardsThisMonth++;
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        totalEnrolled: customers.length,
+        visitsThisMonth,
+        rewardsThisMonth,
+      },
+    });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.get("/loyalty/stats", getLoyaltyStats);
+app.get("/make-server-47a828b2/loyalty/stats", getLoyaltyStats);
+
+// Public: Get loyalty program info
+async function getPublicLoyaltyProgram(c: any) {
+  try {
+    const tenantSlug = c.req.param("tenantSlug");
+    if (!tenantSlug) return c.json({ success: false, error: "Tenant required" }, 400);
+    const enabled = await isFeatureEnabled(tenantSlug, "loyalty");
+    if (!enabled) return c.json({ success: false, error: "Loyalty not enabled" }, 404);
+    const tkv = tenantKv(tenantSlug);
+    const program = await tkv.get("loyalty-program");
+    if (!program) return c.json({ success: true, data: null });
+    return c.json({
+      success: true,
+      data: {
+        name: program.name,
+        rewardDescription: program.rewardDescription,
+        visitsNeeded: program.visitsNeeded,
+        active: program.active,
+      },
+    });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.get("/public/loyalty/:tenantSlug", getPublicLoyaltyProgram);
+app.get("/make-server-47a828b2/public/loyalty/:tenantSlug", getPublicLoyaltyProgram);
+
+// Public: Customer check-in
+async function loyaltyCheckIn(c: any) {
+  try {
+    const tenantSlug = c.req.param("tenantSlug");
+    if (!tenantSlug) return c.json({ success: false, error: "Tenant required" }, 400);
+    const enabled = await isFeatureEnabled(tenantSlug, "loyalty");
+    if (!enabled) return c.json({ success: false, error: "Loyalty not enabled" }, 404);
+    const tkv = tenantKv(tenantSlug);
+    const program = await tkv.get("loyalty-program");
+    if (!program || !program.active) {
+      return c.json({ success: false, error: "Loyalty program is not active" }, 404);
+    }
+
+    const body = await c.req.json();
+    const rawPhone = body?.phone;
+    if (!rawPhone || typeof rawPhone !== "string" || normalizePhone(rawPhone).length < 6) {
+      return c.json({ success: false, error: "Valid phone number required" }, 400);
+    }
+    const phone = normalizePhone(rawPhone);
+    const key = phoneToKey(phone);
+    const today = todayDateStr();
+    let customer: LoyaltyCustomer | null = await tkv.get(key);
+    let isNewCustomer = false;
+
+    if (!customer) {
+      isNewCustomer = true;
+      customer = {
+        phone,
+        visitCount: 0,
+        lastVisitDate: "",
+        rewardUnlocked: false,
+        rewardUnlockedAt: null,
+        createdAt: new Date().toISOString(),
+      };
+    }
+
+    // If reward was previously unlocked and this is a new day, reset the cycle
+    if (customer.rewardUnlocked && customer.lastVisitDate !== today) {
+      customer.visitCount = 0;
+      customer.rewardUnlocked = false;
+      customer.rewardUnlockedAt = null;
+    }
+
+    let alreadyCheckedInToday = false;
+
+    if (customer.lastVisitDate === today && !isNewCustomer) {
+      alreadyCheckedInToday = true;
+    } else {
+      customer.visitCount += 1;
+      customer.lastVisitDate = today;
+
+      if (customer.visitCount >= program.visitsNeeded && !customer.rewardUnlocked) {
+        customer.rewardUnlocked = true;
+        customer.rewardUnlockedAt = new Date().toISOString();
+      }
+    }
+
+    await tkv.set(key, customer);
+
+    return c.json({
+      success: true,
+      data: {
+        visitCount: customer.visitCount,
+        visitsNeeded: program.visitsNeeded,
+        rewardUnlocked: customer.rewardUnlocked,
+        rewardUnlockedAt: customer.rewardUnlockedAt,
+        stampSvg: customer.rewardUnlocked ? program.stampSvg : null,
+        alreadyCheckedInToday,
+        isNewCustomer,
+        programName: program.name,
+        rewardDescription: program.rewardDescription,
+      },
+    });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.post("/public/loyalty/:tenantSlug/checkin", loyaltyCheckIn);
+app.post("/make-server-47a828b2/public/loyalty/:tenantSlug/checkin", loyaltyCheckIn);
+
 // Image upload
 app.post("/upload-image", async (c) => {
   try {

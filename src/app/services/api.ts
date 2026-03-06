@@ -589,6 +589,76 @@ export const offersApi = {
 };
 
 // ============================================
+// LOYALTY API (Admin)
+// ============================================
+
+import type { LoyaltyProgram, LoyaltyProgramInput, LoyaltyStats, PublicLoyaltyProgram, CheckInResult } from '../types/loyalty';
+
+export const loyaltyApi = {
+  async getProgram(): Promise<LoyaltyProgram | null> {
+    const url = `${API_BASE}/loyalty/program`;
+    return getCachedJson<LoyaltyProgram | null>(url, async () => {
+      const response = await fetchWithRetry(url, { headers: getHeaders() });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch loyalty program');
+      return result.data;
+    });
+  },
+
+  async saveProgram(data: LoyaltyProgramInput): Promise<LoyaltyProgram> {
+    const response = await fetchWithRetry(`${API_BASE}/loyalty/program`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Failed to save loyalty program');
+    invalidateCacheByPath('/loyalty');
+    return result.data;
+  },
+
+  async getStats(): Promise<LoyaltyStats> {
+    const url = `${API_BASE}/loyalty/stats`;
+    return getCachedJson<LoyaltyStats>(url, async () => {
+      const response = await fetchWithRetry(url, { headers: getHeaders() });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch loyalty stats');
+      return result.data;
+    });
+  },
+};
+
+// ============================================
+// LOYALTY API (Public / Customer)
+// ============================================
+
+export const publicLoyaltyApi = {
+  async getProgram(tenantSlug: string): Promise<PublicLoyaltyProgram | null> {
+    const url = `${API_BASE}/public/loyalty/${encodeURIComponent(tenantSlug)}`;
+    return getCachedJson<PublicLoyaltyProgram | null>(url, async () => {
+      const response = await fetchWithRetry(url, {
+        headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      }, 1, 300);
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Failed to fetch loyalty program');
+      return result.data;
+    });
+  },
+
+  async checkIn(tenantSlug: string, phone: string): Promise<CheckInResult> {
+    const response = await fetch(`${API_BASE}/public/loyalty/${encodeURIComponent(tenantSlug)}/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+      body: JSON.stringify({ phone }),
+    });
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || 'Check-in failed');
+    invalidateCacheByPath('/loyalty');
+    return result.data;
+  },
+};
+
+// ============================================
 // CUSTOMER MENU BUNDLE API (single round-trip)
 // ============================================
 

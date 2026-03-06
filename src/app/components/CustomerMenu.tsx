@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Star, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
+import { Star, AlertCircle, Gift, Phone } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
 import type { OfferWithItems } from '../types/offers';
-import { customerMenuApi, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi } from '../services/api';
+import { customerMenuApi, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
+import type { PublicLoyaltyProgram } from '../types/loyalty';
+import { LoyaltyBottomSheet } from './LoyaltyBottomSheet';
 import { trackMenuItemClick } from '../lib/analytics';
 import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
 import { toast } from 'sonner';
@@ -19,12 +21,16 @@ const translations = {
     popular: 'مشهور',
     egp: 'ج.م',
     loading: 'جاري التحميل...',
+    limitedTimeOffer: 'عرض لفترة محدودة',
+    getYourGift: 'احصل على هديتك',
   },
   en: {
     allItems: 'All Items',
     popular: 'Popular',
     egp: 'EGP',
     loading: 'Loading...',
+    limitedTimeOffer: 'Limited time offer',
+    getYourGift: 'Get your Gift',
   },
 };
 
@@ -35,7 +41,7 @@ interface CustomerMenuProps {
 const CUSTOMER_MENU_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function CustomerMenu({ slug }: CustomerMenuProps) {
-  const { basePath, tenantSlug } = useTenant();
+  const { basePath, tenantSlug, tenantName } = useTenant();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [generalInfo, setGeneralInfo] = useState<GeneralInfo | null>(null);
@@ -47,6 +53,16 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   /** Selected price variant id per item (when item has priceVariants). */
   const [selectedVariantByItemId, setSelectedVariantByItemId] = useState<Record<string, string>>({});
+  const [loyaltyProgram, setLoyaltyProgram] = useState<PublicLoyaltyProgram | null>(null);
+  const [loyaltySheetOpen, setLoyaltySheetOpen] = useState(false);
+  const [highlightTrackIndex, setHighlightTrackIndex] = useState(1); // 1 = first real slide when infinite
+  const [highlightSnapping, setHighlightSnapping] = useState(false);
+  const [highlightDragPx, setHighlightDragPx] = useState(0);
+  const highlightsTouchStartX = useRef<number | null>(null);
+  const highlightViewportRef = useRef<HTMLDivElement | null>(null);
+  const highlightTrackIndexRef = useRef(1);
+  const highlightSnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightIsDraggingRef = useRef(false);
 
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -177,6 +193,12 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         }
         setOffers([]);
       }
+      try {
+        const lp = await publicLoyaltyApi.getProgram(tenantSlug);
+        if (lp?.active) setLoyaltyProgram(lp);
+      } catch {
+        // Loyalty not enabled or not set up -- ignore silently.
+      }
 
       // Migrate old data structure to new structure
       const migratedMenuItems = menuData.map(item => {
@@ -297,6 +319,86 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
       observer.disconnect();
     };
   }, [categories, menuItems]);
+
+  const highlightImages = generalInfo?.highlightImages ?? [];
+
+  // Infinite slides: [clone last, ...real, clone first] so we can scroll endlessly
+  const highlightInfiniteSlides = useMemo(() => {
+    if (highlightImages.length <= 1) return highlightImages;
+    const first = highlightImages[0];
+    const last = highlightImages[highlightImages.length - 1];
+    return [last, ...highlightImages, first];
+  }, [highlightImages]);
+
+  const highlightSlideCount = highlightInfiniteSlides.length;
+  const highlightRealCount = highlightImages.length;
+  const effectiveTrackIndex = highlightRealCount <= 1 ? 0 : highlightTrackIndex;
+
+  // Keep ref in sync for transition-end and autoplay
+  highlightTrackIndexRef.current = highlightTrackIndex;
+
+  // After transition ends: snap from clone back to real slide (use ref so we see current index)
+  const handleHighlightTransitionEnd = useCallback(
+    (e: React.TransitionEvent) => {
+      if (e.target !== e.currentTarget || highlightRealCount <= 1) return;
+      if (highlightSnapTimeoutRef.current) {
+        clearTimeout(highlightSnapTimeoutRef.current);
+        highlightSnapTimeoutRef.current = null;
+      }
+      const i = highlightTrackIndexRef.current;
+      if (i === 0) {
+        setHighlightSnapping(true);
+        setHighlightTrackIndex(highlightRealCount);
+      } else if (i === highlightSlideCount - 1) {
+        setHighlightSnapping(true);
+        setHighlightTrackIndex(1);
+      }
+    },
+    [highlightRealCount, highlightSlideCount]
+  );
+
+  // Fallback: snap if transitionend didn't fire when we're on a clone
+  useEffect(() => {
+    if (highlightRealCount <= 1) return;
+    if (highlightTrackIndex === 0 || highlightTrackIndex === highlightSlideCount - 1) {
+      highlightSnapTimeoutRef.current = setTimeout(() => {
+        highlightSnapTimeoutRef.current = null;
+        const i = highlightTrackIndexRef.current;
+        if (i === 0) {
+          setHighlightSnapping(true);
+          setHighlightTrackIndex(highlightRealCount);
+        } else if (i === highlightSlideCount - 1) {
+          setHighlightSnapping(true);
+          setHighlightTrackIndex(1);
+        }
+      }, 400);
+    }
+    return () => {
+      if (highlightSnapTimeoutRef.current) {
+        clearTimeout(highlightSnapTimeoutRef.current);
+        highlightSnapTimeoutRef.current = null;
+      }
+    };
+  }, [highlightTrackIndex, highlightRealCount, highlightSlideCount]);
+
+  useEffect(() => {
+    if (!highlightSnapping) return;
+    const id = setTimeout(() => setHighlightSnapping(false), 50);
+    return () => clearTimeout(id);
+  }, [highlightSnapping]);
+
+  // Autoplay: always advance to the right (first → second → third → first …)
+  useEffect(() => {
+    if (highlightRealCount <= 1) return;
+    const interval = setInterval(() => {
+      if (highlightIsDraggingRef.current) return;
+      setHighlightTrackIndex((i) => {
+        if (i >= highlightSlideCount - 1) return highlightSlideCount - 1; // show clone, then snap to 1
+        return i + 1;
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [highlightRealCount, highlightSlideCount]);
 
   // Default to first category when categories load
   useEffect(() => {
@@ -481,55 +583,141 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
   const brandColor = generalInfo.brandColor || '#e7000b';
 
+  const initials = (tenantName || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase() || 'BR';
+
   return (
     <div className="min-h-screen bg-white max-w-[600px] mx-auto shadow-lg" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      {/* Header - all branding from General Info; height follows content */}
-      <div className="relative">
-        {/* Background: cover image from General Info, or solid brand color — fills header */}
-        <div className="absolute inset-0 w-full overflow-hidden" style={{ backgroundColor: brandColor }}>
-          {generalInfo.backgroundImage && (
-            <img
-              src={generalInfo.backgroundImage}
-              alt="Background"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          )}
-          <div
-            className="absolute inset-0 bg-gradient-to-b from-transparent"
-            style={{ background: `linear-gradient(to bottom, rgba(0,0,0,0.5), ${brandColor})` }}
-          />
-        </div>
-
-        {/* Logo and Info Card — in flow so header height = content */}
-        <div className="relative w-full flex flex-col items-center pt-8">
-          {/* Logo Circle */}
-          {generalInfo.logoImage && (
-            <div className="relative w-[250px] h-[250px] rounded-full mb-0 top-[130px]">
-              <div className="absolute inset-0 rounded-full border-[6px] border-white overflow-hidden">
-                <img 
-                  src={generalInfo.logoImage} 
-                  alt="Logo" 
-                  className="w-full h-full object-cover rounded-full"
-                />
+      {/* Header: hero / highlights slider + restaurant info block */}
+      <div className="w-full">
+        {highlightImages.length > 0 ? (
+          /* Slider highlights: one card at a time, infinite (loop right), drag-to-swipe + autoplay */
+          <div className="w-full p-4 pt-4 pb-0">
+            <div className="group" role="group" dir="ltr">
+              <div
+                ref={highlightViewportRef}
+                className="w-full overflow-hidden rounded-2xl touch-pan-y"
+              >
+                <div
+                  className={`flex select-none ${highlightSnapping || highlightDragPx !== 0 ? '' : 'transition-transform duration-300 ease-out'}`}
+                  style={{
+                    width: `${highlightSlideCount * 100}%`,
+                    transform: `translateX(calc(-${effectiveTrackIndex * (100 / highlightSlideCount)}% + ${highlightDragPx}px))`,
+                  }}
+                  onTransitionEnd={handleHighlightTransitionEnd}
+                  onTouchStart={(e) => {
+                    highlightIsDraggingRef.current = true;
+                    highlightsTouchStartX.current = e.targetTouches[0].clientX;
+                    setHighlightDragPx(0);
+                  }}
+                  onTouchMove={(e) => {
+                    const start = highlightsTouchStartX.current;
+                    if (start == null) return;
+                    const x = e.targetTouches[0].clientX;
+                    setHighlightDragPx(x - start);
+                  }}
+                  onTouchEnd={(e) => {
+                    highlightIsDraggingRef.current = false;
+                    const start = highlightsTouchStartX.current;
+                    if (start == null) return;
+                    highlightsTouchStartX.current = null;
+                    const end = e.changedTouches[0].clientX;
+                    const delta = start - end;
+                    const viewportW = highlightViewportRef.current?.clientWidth ?? 300;
+                    const threshold = Math.min(viewportW * 0.2, 60);
+                    if (delta > threshold) {
+                      setHighlightTrackIndex((i) => Math.min(i + 1, highlightSlideCount - 1));
+                    } else if (delta < -threshold) {
+                      setHighlightTrackIndex((i) => Math.max(i - 1, 0));
+                    }
+                    setHighlightDragPx(0);
+                  }}
+                >
+                  {highlightInfiniteSlides.map((src, i) => (
+                    <div
+                      key={i}
+                      className="flex shrink-0 min-w-0"
+                      style={{ flexBasis: `${100 / highlightSlideCount}%` }}
+                    >
+                      <div className="relative w-full aspect-video bg-gray-100 rounded-2xl overflow-hidden">
+                        <img
+                          src={src}
+                          alt=""
+                          className="w-full h-full object-cover rounded-2xl pointer-events-none select-none"
+                          draggable={false}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        ) : (
+          /* Single hero image (legacy) */
+          <div
+            className="w-full overflow-hidden rounded-t-2xl"
+            style={{ backgroundColor: brandColor, minHeight: 200 }}
+          >
+            {generalInfo.backgroundImage ? (
+              <img
+                src={generalInfo.backgroundImage}
+                alt=""
+                className="w-full h-[220px] object-cover"
+              />
+            ) : (
+              <div className="w-full h-[220px]" />
+            )}
+          </div>
+        )}
 
-          {/* Info Card */}
-          <div className="bg-white w-full rounded-none pt-[150px] pb-8 px-6 flex flex-col gap-6">
-            {/* Phone and Tagline */}
-            <div className="flex flex-col">
-              {generalInfo.phoneNumber && (
-                <p className="text-base text-black text-center leading-8">
-                  ☎ {generalInfo.phoneNumber}
+        {/* Restaurant info block - white, logo left (no padding) / name + phone + slogan + social right, tight gap */}
+        <div className="bg-white w-full px-6 py-5 flex gap-2 items-start">
+          {/* Left: logo / brand square - no padding, fills box */}
+          <div
+            className="shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden flex items-center justify-center"
+            style={{ backgroundColor: brandColor }}
+          >
+            {generalInfo.logoImage ? (
+              <img
+                src={generalInfo.logoImage}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="text-white text-center leading-tight py-0.5 px-1">
+                <p className="text-[9px] font-bold uppercase" style={{ lineHeight: 1.2 }}>
+                  {(tenantName || '').split(/\s+/).slice(0, 2).join(' ').toUpperCase() || 'MENU'}
                 </p>
-              )}
-              <p className="text-base text-black text-center leading-8">
+                <p className="text-base font-bold mt-0.5">{initials}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right: name, phone, slogan with arrow, social - left-aligned */}
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <h1 className="font-bold text-xl text-black leading-tight">
+              {tenantName || generalInfo.tagline || 'Menu'}
+            </h1>
+            {generalInfo.phoneNumber && (
+              <a
+                href={`tel:${generalInfo.phoneNumber.replace(/\s/g, '')}`}
+                className="flex items-center gap-1.5 text-black text-sm"
+              >
+                <Phone size={14} style={{ color: brandColor }} />
+                <span>{generalInfo.phoneNumber}</span>
+              </a>
+            )}
+            {generalInfo.tagline && (
+              <p className="text-sm text-black">
                 {generalInfo.tagline}
               </p>
-            </div>
-
-            {/* Social Media Icons - only show when the corresponding link is filled */}
+            )}
             {(() => {
               const sm = generalInfo.socialMedia || {};
               const hasFacebook = sm.facebook?.trim?.();
@@ -539,29 +727,18 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
               const hasAny = hasFacebook || hasInstagram || hasTiktok || hasMessenger;
               if (!hasAny) return null;
               return (
-                <div className="flex flex-wrap gap-2.5 items-center justify-center">
+                <div className="flex gap-2.5 items-center mt-1.5">
                   {hasFacebook && (
                     <a
                       href={sm.facebook!.trim()}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-[#f2f2f2] p-2.5 rounded-full flex items-center justify-center size-9 max-h-9 shrink-0"
+                      className="size-9 rounded-full bg-white border border-black flex items-center justify-center shrink-0"
                       aria-label="Facebook"
                     >
-                      <svg className="size-full max-h-9 max-w-9 shrink-0" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 12 22">
+                      <svg className="size-5 shrink-0" fill="none" viewBox="0 0 12 22">
                         <path d={svgPaths.p1471f500} fill="black" />
                       </svg>
-                    </a>
-                  )}
-                  {hasInstagram && (
-                    <a
-                      href={sm.instagram!.trim()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-[#f2f2f2] p-2.5 rounded-full flex items-center justify-center size-9 max-h-9 shrink-0 text-black"
-                      aria-label="Instagram"
-                    >
-                      <img src="/icons/instagram.svg" alt="" className="size-full max-h-9 max-w-9 object-contain" aria-hidden />
                     </a>
                   )}
                   {hasTiktok && (
@@ -569,10 +746,21 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                       href={sm.tiktok!.trim()}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-[#f2f2f2] p-2.5 rounded-full flex items-center justify-center size-9 max-h-9 shrink-0 text-black"
+                      className="size-9 rounded-full bg-white border border-black flex items-center justify-center shrink-0"
                       aria-label="TikTok"
                     >
-                      <img src="/icons/tiktok.svg" alt="" className="size-full max-h-9 max-w-9 object-contain" aria-hidden />
+                      <img src="/icons/tiktok.svg" alt="" className="size-5 object-contain" aria-hidden />
+                    </a>
+                  )}
+                  {hasInstagram && (
+                    <a
+                      href={sm.instagram!.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="size-9 rounded-full bg-white border border-black flex items-center justify-center shrink-0"
+                      aria-label="Instagram"
+                    >
+                      <img src="/icons/instagram.svg" alt="" className="size-5 object-contain" aria-hidden />
                     </a>
                   )}
                   {hasMessenger && (
@@ -580,10 +768,10 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                       href={sm.messenger!.trim()}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-[#f2f2f2] p-2.5 rounded-full flex items-center justify-center size-9 max-h-9 shrink-0"
+                      className="size-9 rounded-full bg-white border border-black flex items-center justify-center shrink-0"
                       aria-label="Messenger"
                     >
-                      <svg className="size-full max-h-9 max-w-9 shrink-0" fill="none" preserveAspectRatio="xMidYMid meet" viewBox="0 0 21.9948 22">
+                      <svg className="size-5 shrink-0" fill="none" viewBox="0 0 21.9948 22">
                         <path d={svgPaths.p30c89400} fill="black" />
                       </svg>
                     </a>
@@ -591,7 +779,6 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                 </div>
               );
             })()}
-
           </div>
         </div>
       </div>
@@ -640,8 +827,16 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
       {/* Active offers strip: right under tabs */}
       {featuredOfferItems.length > 0 && (
         <div style={{ backgroundColor: `${brandColor}1A` }}>
+          {/* Big centered title with % icons */}
+          <div className="text-center py-6 px-4">
+            <h2 className="font-bold text-2xl sm:text-3xl text-[#18181b] uppercase tracking-tight">
+              <span className="text-[#52525c] font-normal" aria-hidden>%</span>
+              {' '}{t.limitedTimeOffer}{' '}
+              <span className="text-[#52525c] font-normal" aria-hidden>%</span>
+            </h2>
+          </div>
           <div className="overflow-x-auto pb-2 scrollbar-hide">
-            <div className="flex gap-3 w-max p-5">
+            <div className="flex gap-3 w-max p-5 pt-0">
               {featuredOfferItems.map((item) => {
                 const offer = activeOfferByItemId.get(item.id) ?? null;
                 const basePrice =
@@ -654,28 +849,29 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                     key={`offer-strip-${item.id}`}
                     className="w-[220px] rounded-xl border border-gray-200 bg-white overflow-hidden shrink-0"
                   >
-                    {item.image ? (
-                      <img src={item.image} alt={getItemName(item)} className="h-[220px] w-full object-cover" />
-                    ) : (
-                      <div className="h-[220px] w-full bg-gray-100" />
-                    )}
+                    <div className="relative">
+                      {item.image ? (
+                        <img src={item.image} alt={getItemName(item)} className="h-[220px] w-full object-cover" />
+                      ) : (
+                        <div className="h-[220px] w-full bg-gray-100" />
+                      )}
+                      {offer && (
+                        <span className="absolute top-2 right-2 rounded-full px-3 py-1.5 text-sm font-bold text-black shadow-md bg-[#cfff5e]">
+                          {offer.discountPct}% OFF
+                        </span>
+                      )}
+                    </div>
                     <div className="p-3">
                       <p className={`font-semibold text-xl text-[#18181b] uppercase tracking-tight line-clamp-1 ${language === 'en' ? 'text-left' : 'text-right'}`}>
                         {getItemName(item)}
                       </p>
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-gray-500 line-through">{basePrice} {t.egp}</span>
-                        <span className="font-bold text-2xl tracking-tight" style={{ color: brandColor }}>{discounted}</span>
+                        <span className="font-bold text-2xl tracking-tight text-black px-2 py-0.5 rounded-md bg-[#cfff5e]">
+                          {discounted}
+                        </span>
                         <span className="text-sm font-normal text-gray-500">{t.egp}</span>
                       </div>
-                      {offer && (
-                        <span
-                          className="inline-flex mt-2 rounded-full px-2 py-0.5 text-[11px] font-bold text-white"
-                          style={{ backgroundColor: brandColor }}
-                        >
-                          {offer.discountPct}% OFF
-                        </span>
-                      )}
                     </div>
                   </div>
                 );
@@ -687,14 +883,15 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
       {/* Menu Items - Continuous List */}
       <div className="flex flex-col pb-6">
-        {/* Category Sections - All categories shown in sequence */}
-        {categories.map((category) => {
+        {/* Category Sections - All categories shown in sequence; loyalty banner after middle category */}
+        {categories.map((category, index) => {
           const categoryItems = itemsByCategory[category.name] || [];
           if (categoryItems.length === 0) return null;
+          const showLoyaltyAfterThis = index === Math.floor(categories.length / 2);
 
           return (
+            <Fragment key={category.id}>
             <div
-              key={category.id}
               ref={(el) => (categoryRefs.current[category.name] = el)}
               data-category={category.name}
               className="scroll-mt-[100px]"
@@ -745,7 +942,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                           </div>
                         )}
                         {activeOffer && (
-                          <div className="px-2 py-1 rounded-lg bg-[#101010] text-[#cfff5e]">
+                          <div className="px-2 py-1 rounded-lg bg-[#cfff5e] text-black">
                             <p className="font-bold text-[10px] uppercase tracking-wider">{activeOffer.discountPct}% OFF</p>
                           </div>
                         )}
@@ -802,9 +999,9 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                           );
                         }
                         return (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm text-gray-500 line-through">{basePrice} {t.egp}</span>
-                            <span className="font-bold text-2xl tracking-tight" style={{ color: brandColor }}>
+                            <span className="font-bold text-2xl tracking-tight text-black px-2 py-0.5 rounded-md bg-[#cfff5e]">
                               {discountedPrice}
                             </span>
                             <span className="text-sm font-normal text-gray-500">{t.egp}</span>
@@ -820,10 +1017,60 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                 );
               })}
             </div>
+            {showLoyaltyAfterThis && loyaltyProgram && (
+              <div className="px-6 pb-6">
+                <button
+                  type="button"
+                  onClick={() => setLoyaltySheetOpen(true)}
+                  className="w-full rounded-[28px] overflow-hidden text-left cursor-pointer block shadow-lg transition-transform active:scale-[0.99]"
+                  style={{
+                    background: `linear-gradient(180deg, ${brandColor} 0%, ${brandColor}E6 100%)`,
+                    boxShadow: `0 4px 14px ${brandColor}40`,
+                  }}
+                >
+                  <div className="relative py-8 px-6">
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+                      <Gift className="absolute top-3 left-4 w-10 h-10 opacity-20" style={{ color: 'rgba(255,255,255,0.5)' }} strokeWidth={1.5} />
+                      <Gift className="absolute top-2 right-6 w-8 h-8 opacity-20" style={{ color: 'rgba(255,255,255,0.5)' }} strokeWidth={1.5} />
+                      <Gift className="absolute bottom-4 left-1/2 -translate-x-1/2 w-14 h-14 opacity-15" style={{ color: 'rgba(255,255,255,0.4)' }} strokeWidth={1.5} />
+                    </div>
+                    <div className="relative">
+                      <h3 className="font-bold text-lg sm:text-xl text-white text-center uppercase tracking-tight">
+                        {loyaltyProgram.name}
+                      </h3>
+                      <p className="font-normal text-sm text-white/95 text-center mt-1 line-clamp-2">
+                        {loyaltyProgram.rewardDescription}
+                      </p>
+                    </div>
+                    <div className="relative mt-6 flex justify-center">
+                      <span
+                        className="inline-flex items-center justify-center gap-2 w-full max-w-[280px] py-3.5 px-6 rounded-full bg-white shadow-md"
+                        style={{ color: brandColor }}
+                      >
+                        <Gift className="w-5 h-5 shrink-0" strokeWidth={2} />
+                        <span className="font-semibold text-base">{t.getYourGift}</span>
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+            </Fragment>
           );
         })}
       </div>
 
+      {/* Loyalty bottom sheet (rendered once, opened by banner) */}
+      {loyaltyProgram && (
+        <LoyaltyBottomSheet
+          open={loyaltySheetOpen}
+          onOpenChange={setLoyaltySheetOpen}
+          program={loyaltyProgram}
+          tenantSlug={tenantSlug}
+          language={language}
+          brandColor={brandColor}
+        />
+      )}
     </div>
   );
 }

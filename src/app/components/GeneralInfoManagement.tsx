@@ -1,8 +1,7 @@
 import { memo, useState, useEffect } from 'react';
-import { Phone, Flag, Facebook, Instagram, MessageCircle, Music, Palette } from 'lucide-react';
+import { Phone, Flag, Facebook, Instagram, MessageCircle, Music, Palette, Plus, X } from 'lucide-react';
 import { GeneralInfo } from '../types/menu';
 import { ImageUpload } from './ImageUpload';
-import { BackgroundImageUpload } from './BackgroundImageUpload';
 import { useTenant } from '../context/TenantContext';
 import { useAdminLanguage } from '../context/AdminLanguageContext';
 
@@ -24,6 +23,21 @@ export const GeneralInfoManagement = memo(function GeneralInfoManagement({ gener
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const highlightImages = formData.highlightImages ?? [];
+  const handleHighlightChange = (index: number, url: string) => {
+    const next = [...highlightImages];
+    next[index] = url;
+    setFormData((prev) => ({ ...prev, highlightImages: next.slice(0, 3) }));
+  };
+  const handleHighlightRemove = (index: number) => {
+    const next = highlightImages.filter((_, i) => i !== index);
+    setFormData((prev) => ({ ...prev, highlightImages: next }));
+  };
+  const handleHighlightAdd = () => {
+    if (highlightImages.length >= 3) return;
+    setFormData((prev) => ({ ...prev, highlightImages: [...highlightImages, ''] }));
+  };
+
   const handleSocialMediaChange = (platform: keyof GeneralInfo['socialMedia'], value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -36,7 +50,11 @@ export const GeneralInfoManagement = memo(function GeneralInfoManagement({ gener
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdate(formData);
+    const toSave = {
+      ...formData,
+      highlightImages: (formData.highlightImages ?? []).filter(Boolean),
+    };
+    onUpdate(toSave);
   };
 
   const handleReset = () => {
@@ -61,19 +79,6 @@ export const GeneralInfoManagement = memo(function GeneralInfoManagement({ gener
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('generalInfo.backgroundImage')}
-              </label>
-              <BackgroundImageUpload
-                value={formData.backgroundImage}
-                onChange={(url) => handleChange('backgroundImage', url)}
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                {t('generalInfo.backgroundImageHint')}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t('generalInfo.logoImage')}
               </label>
               <ImageUpload
@@ -90,6 +95,51 @@ export const GeneralInfoManagement = memo(function GeneralInfoManagement({ gener
               <p className="text-xs text-gray-500 mt-2">
                 {t('generalInfo.logoImageHint', { name: tenantName || '' })}
               </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('generalInfo.highlightImages')}
+              </label>
+              <p className="text-xs text-gray-500 mb-2">
+                {t('generalInfo.highlightImagesHint')}
+              </p>
+              <div className="space-y-3">
+                {highlightImages.map((url, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <ImageUpload
+                        value={url}
+                        onChange={(newUrl) => handleHighlightChange(index, newUrl)}
+                        uploadOptions={{
+                          maxWidth: 1200,
+                          maxHeight: 800,
+                          quality: 0.85,
+                          targetMaxBytes: 400 * 1024,
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleHighlightRemove(index)}
+                      className="shrink-0 p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      aria-label={t('imageUpload.remove')}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+                {highlightImages.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={handleHighlightAdd}
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 border border-dashed border-gray-300 rounded-lg px-4 py-3 w-full justify-center transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('generalInfo.addHighlightImage')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:analyze": "ANALYZE=1 vite build",
     "dev": "vite",
     "deploy:functions": "supabase functions deploy make-server-47a828b2"
   },
@@ -71,6 +72,7 @@
     "@tailwindcss/vite": "4.1.12",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "4.7.0",
+    "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   },

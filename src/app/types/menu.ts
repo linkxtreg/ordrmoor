@@ -64,6 +64,8 @@ export interface GeneralInfo {
   tagline: string;
   backgroundImage: string;
   logoImage: string;
+  /** Up to 3 highlight images for the customer menu slider. When set, the top hero becomes a slider. */
+  highlightImages?: string[];
   brandColor: string;
   defaultMenuId?: string;
   socialMedia: {

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   plugins: [
@@ -9,7 +10,8 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
-  ],
+    process.env.ANALYZE === '1' && visualizer({ open: false, gzipSize: true, filename: 'dist/stats.html' }),
+  ].filter(Boolean),
   resolve: {
     alias: {
       // Alias @ to the src directory
