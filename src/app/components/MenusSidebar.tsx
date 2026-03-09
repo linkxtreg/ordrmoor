@@ -1,9 +1,12 @@
 import { memo, useState } from 'react';
-import { Plus, ChevronRight } from 'lucide-react';
+import { Plus, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Menu } from '../types/menu';
 import { menusApi } from '../services/api';
 import { toast } from 'sonner';
 import { useAdminLanguage } from '../context/AdminLanguageContext';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+
+const MENUS_COLLAPSE_THRESHOLD = 5;
 
 interface MenusSidebarProps {
   menus: Menu[];
@@ -23,6 +26,9 @@ export const MenusSidebar = memo(function MenusSidebar({
   const { t } = useAdminLanguage();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newMenuName, setNewMenuName] = useState('');
+  const [menusExpanded, setMenusExpanded] = useState(true);
+  const shouldCollapse = menus.length > MENUS_COLLAPSE_THRESHOLD;
+  const displayMenus = shouldCollapse && !menusExpanded ? menus.slice(0, MENUS_COLLAPSE_THRESHOLD) : menus;
 
   const handleCreateMenu = async () => {
     if (!newMenuName.trim()) {
@@ -48,84 +54,96 @@ export const MenusSidebar = memo(function MenusSidebar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 px-2">
-        <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">{t('menus.title')}</h2>
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('menus.title')}</span>
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="p-1.5 text-gray-500 hover:text-[#101010] hover:bg-[#f9faf3] rounded-lg transition-colors"
+          className="flex items-center gap-1 text-sm font-medium text-[#101010] hover:text-[#101010]/80 transition-colors"
           title={t('menus.createNew')}
         >
-          <Plus size={18} />
+          <Plus size={14} className="shrink-0" />
+          <span>{t('layout.addNew')}</span>
         </button>
       </div>
 
-      {isCreateOpen && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mx-2">
+      <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) setNewMenuName(''); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('menus.createNew')}</DialogTitle>
+          </DialogHeader>
           <input
             type="text"
             value={newMenuName}
             onChange={(e) => setNewMenuName(e.target.value)}
             placeholder={t('menus.menuName')}
-            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm mb-2"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#101010]/20 focus:border-[#101010] outline-none"
             autoFocus
             onKeyDown={(e) => e.key === 'Enter' && handleCreateMenu()}
           />
-          <div className="flex gap-2">
+          <DialogFooter className="gap-2 sm:gap-0">
             <button
-              onClick={handleCreateMenu}
-              className="px-2 py-1.5 bg-[#101010] text-[#cfff5e] rounded hover:bg-[#cfff5e] hover:text-[#101010] text-xs font-medium"
-            >
-              {t('menus.create')}
-            </button>
-            <button
-              onClick={() => {
-                setIsCreateOpen(false);
-                setNewMenuName('');
-              }}
-              className="px-2 py-1.5 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+              type="button"
+              onClick={() => { setIsCreateOpen(false); setNewMenuName(''); }}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
             >
               {t('menus.cancel')}
             </button>
-          </div>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={handleCreateMenu}
+              className="px-4 py-2 bg-[#101010] text-[#cfff5e] rounded-lg hover:bg-[#cfff5e] hover:text-[#101010] text-sm font-medium"
+            >
+              {t('menus.create')}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-1">
-        {menus.map((menu) => (
-          <div
-            key={menu.id}
-            className={`border rounded-lg overflow-hidden mx-2 ${
-              selectedMenuId === menu.id
-                ? 'border-blue-600 bg-blue-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
+        {displayMenus.map((menu) => {
+          const isActive = selectedMenuId === menu.id;
+          return (
+            <div key={menu.id} className="mx-2">
+              <button
+                onClick={() => {
+                  onSelectMenu(menu.id);
+                  onCloseMenu?.();
+                }}
+                type="button"
+                className={`w-full flex items-center gap-2 px-4 py-3 text-left min-w-0 rounded-2xl border transition-colors ${
+                  isActive
+                    ? 'bg-[#f0f0f0] border-gray-900 font-semibold text-gray-900'
+                    : 'bg-white border-gray-200 hover:border-gray-300 font-medium text-gray-700'
+                }`}
+              >
+                <span className="truncate text-sm flex-1 min-w-0">{menu.name}</span>
+                <ChevronRight size={14} className={isActive ? 'text-gray-700 shrink-0' : 'text-gray-400 shrink-0'} />
+              </button>
+            </div>
+          );
+        })}
+        {shouldCollapse && (
+          <button
+            type="button"
+            onClick={() => setMenusExpanded((e) => !e)}
+            className="w-full flex items-center justify-center gap-1 py-2 text-xs text-gray-500 hover:text-gray-700"
           >
-            <button
-              onClick={() => {
-                onSelectMenu(menu.id);
-                onCloseMenu?.();
-              }}
-              type="button"
-              className="w-full flex items-center gap-2 p-2.5 text-left min-w-0"
-            >
-              <span className="font-medium truncate text-sm">{menu.name}</span>
-              <ChevronRight size={14} className="text-gray-400 shrink-0" />
-            </button>
-          </div>
-        ))}
+            {menusExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <span>{menusExpanded ? t('menus.showLess') : t('menus.showMore')}</span>
+          </button>
+        )}
       </div>
 
-      {menus.length === 0 && !isCreateOpen && (
+      {menus.length === 0 && (
         <div className="text-center py-6 text-gray-500 text-sm px-2">
           <p className="mb-2">{t('menus.noMenusYet')}</p>
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="text-blue-600 hover:underline"
+            className="text-[#101010] hover:underline font-medium"
           >
             {t('menus.createFirstMenu')}
           </button>
         </div>
       )}
-
     </div>
   );
 });

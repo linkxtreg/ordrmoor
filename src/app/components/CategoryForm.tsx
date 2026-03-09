@@ -108,34 +108,6 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
                 placeholder={t('categoryForm.categoryNameArPlaceholder')}
               />
             </div>
-
-            {/* Description (Optional) - kept for backward compatibility */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('categoryForm.descOptional')}
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder={t('categoryForm.descPlaceholder')}
-              />
-            </div>
-
-            {/* Description EN (Optional) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('categoryForm.descEnOptional')}
-              </label>
-              <textarea
-                value={formData.descriptionEn ?? ''}
-                onChange={(e) => handleChange('descriptionEn', e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
-                rows={3}
-                placeholder={t('categoryForm.descEnPlaceholder')}
-              />
-            </div>
           </div>
 
           {/* Footer */}

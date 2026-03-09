@@ -264,7 +264,9 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         .filter(item => item.isAvailable)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       
-      const sortedCategories = (categoriesData || []).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const sortedCategories = (categoriesData || [])
+        .filter((c) => c.isAvailable !== false)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
       setMenuItems(sortedMenuItems);
       setCategories(sortedCategories);

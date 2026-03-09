@@ -122,6 +122,32 @@ type TenantRecord = {
   adminUserId?: string;
   active?: boolean;
   featureFlags?: TenantFeatureFlags;
+  planId?: string;
+  subscriptionInterval?: "monthly" | "annually";
+  subscriptionPeriodEnd?: string;
+};
+
+function addDays(date: Date, days: number): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+type PlanRecord = {
+  id: string;
+  name: string;
+  tier: number;
+  price: number;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency: string;
+  interval: "monthly" | "annually";
+  durationMonths: number;
+  benefits: string[];
+  featureFlags?: TenantFeatureFlags;
+  active: boolean;
+  createdAt: string;
+  updatedAt?: string;
 };
 
 function normalizeFeatureFlags(input: unknown): TenantFeatureFlags {
@@ -148,7 +174,32 @@ function normalizeTenantRecord(input: unknown): TenantRecord | null {
     adminUserId: typeof record.adminUserId === "string" ? record.adminUserId : undefined,
     active: typeof record.active === "boolean" ? record.active : undefined,
     featureFlags: normalizeFeatureFlags(record.featureFlags),
+    planId: typeof record.planId === "string" ? record.planId : undefined,
+    subscriptionInterval: record.subscriptionInterval === "annually" ? "annually" : record.subscriptionInterval === "monthly" ? "monthly" : undefined,
+    subscriptionPeriodEnd: typeof record.subscriptionPeriodEnd === "string" ? record.subscriptionPeriodEnd : undefined,
   };
+}
+
+function normalizePlanRecord(input: unknown): PlanRecord | null {
+  if (!input || typeof input !== "object") return null;
+  const record = input as Record<string, unknown>;
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  if (!id || !name) return null;
+  const tier = typeof record.tier === "number" && Number.isFinite(record.tier) ? record.tier : 0;
+  const currency = typeof record.currency === "string" ? record.currency.trim() || "USD" : "USD";
+  const interval = record.interval === "annually" ? "annually" : "monthly";
+  const durationMonths = typeof record.durationMonths === "number" && Number.isFinite(record.durationMonths) ? record.durationMonths : (interval === "annually" ? 12 : 1);
+  const legacyPrice = typeof record.price === "number" && Number.isFinite(record.price) ? record.price : 0;
+  const priceMonthly = typeof record.priceMonthly === "number" && Number.isFinite(record.priceMonthly) ? record.priceMonthly : (interval === "monthly" ? legacyPrice : legacyPrice / 12);
+  const priceAnnual = typeof record.priceAnnual === "number" && Number.isFinite(record.priceAnnual) ? record.priceAnnual : (interval === "annually" ? legacyPrice : legacyPrice * 12);
+  const price = priceMonthly;
+  const benefits = Array.isArray(record.benefits) ? record.benefits.filter((b): b is string => typeof b === "string") : [];
+  const featureFlags = normalizeFeatureFlags(record.featureFlags);
+  const active = typeof record.active === "boolean" ? record.active : true;
+  const createdAt = typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString();
+  const updatedAt = typeof record.updatedAt === "string" ? record.updatedAt : undefined;
+  return { id, name, tier, price, priceMonthly, priceAnnual, currency, interval, durationMonths, benefits, featureFlags, active, createdAt, updatedAt };
 }
 
 function getTenantSlugOrDefault(c: any): string {
@@ -425,6 +476,56 @@ app.get("/make-server-47a828b2/tenants/info/:slug", async (c) => {
     return c.json({ exists: false }, 404);
   }
 });
+
+// Public: List active plans (for tenant admin Settings)
+app.get("/plans", async (c) => {
+  try {
+    const plans = await getPlansList();
+    const active = plans.filter((p) => p.active).sort((a, b) => a.tier - b.tier);
+    return c.json({ success: true, data: active });
+  } catch (error) {
+    console.error("Error listing plans:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+app.get("/make-server-47a828b2/plans", async (c) => {
+  try {
+    const plans = await getPlansList();
+    const active = plans.filter((p) => p.active).sort((a, b) => a.tier - b.tier);
+    return c.json({ success: true, data: active });
+  } catch (error) {
+    console.error("Error listing plans:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+});
+
+async function tenantSubscription(c: any) {
+  try {
+    const tenantSlug = getTenant(c) || "default";
+    const tenants = await getTenantsList();
+    const tenant = tenants.find((t) => t.slug === tenantSlug);
+    if (!tenant || tenant.active === false) {
+      return c.json({ success: false, error: "Tenant not found" }, 404);
+    }
+    const planId = tenant.planId ?? null;
+    const subscriptionInterval = tenant.subscriptionInterval ?? null;
+    const subscriptionPeriodEnd = tenant.subscriptionPeriodEnd ?? null;
+    let plan = null;
+    if (planId) {
+      const plans = await getPlansList();
+      const activePlans = plans.filter((p) => p.active);
+      plan = activePlans.find((p) => p.id === planId) ?? plans.find((p) => p.id === planId) ?? null;
+    }
+    return c.json({
+      success: true,
+      data: { planId, subscriptionInterval, subscriptionPeriodEnd, plan },
+    });
+  } catch (error) {
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.get("/tenant/subscription", tenantSubscription);
+app.get("/make-server-47a828b2/tenant/subscription", tenantSubscription);
 
 async function tenantFeatures(c: any) {
   try {
@@ -1780,6 +1881,7 @@ async function requireSuperAdmin(c: any): Promise<{ ok: false; res: Response } |
 }
 
 const TENANTS_KEY = "_meta:tenants";
+const PLANS_KEY = "_meta:plans";
 
 async function getTenantsList(): Promise<TenantRecord[]> {
   const data = await kv.get(TENANTS_KEY);
@@ -1804,10 +1906,23 @@ async function getTenantsList(): Promise<TenantRecord[]> {
   return list;
 }
 
+async function getPlansList(): Promise<PlanRecord[]> {
+  const data = await kv.get(PLANS_KEY);
+  const list = (data?.plans ?? [])
+    .map((p: unknown) => normalizePlanRecord(p))
+    .filter((p: PlanRecord | null): p is PlanRecord => p !== null);
+  return list;
+}
+
 async function getTenantFeatureFlags(tenantSlug: string): Promise<TenantFeatureFlags> {
   const tenants = await getTenantsList();
   const tenant = tenants.find((t) => t.slug === tenantSlug);
   if (!tenant) return {};
+  if (tenant.planId) {
+    const plans = await getPlansList();
+    const plan = plans.find((p) => p.id === tenant.planId);
+    if (plan && plan.featureFlags) return normalizeFeatureFlags(plan.featureFlags);
+  }
   return normalizeFeatureFlags(tenant.featureFlags);
 }
 
@@ -1894,14 +2009,23 @@ async function superAdminCreateTenant(c: any) {
       return c.json({ success: false, error: msg.includes("already") ? "Email already registered" : msg }, 400);
     }
     const active = body.active !== false;
+    const planId = body.planId != null ? String(body.planId).trim() || undefined : undefined;
+    const subscriptionInterval = body.subscriptionInterval === "annually" ? "annually" : body.subscriptionInterval === "monthly" ? "monthly" : undefined;
+    const now = new Date();
+    const subscriptionPeriodEnd =
+      body.subscriptionPeriodEnd != null ? String(body.subscriptionPeriodEnd).trim() || undefined
+      : planId && subscriptionInterval ? addDays(now, subscriptionInterval === "annually" ? 365 : 30) : undefined;
     const newTenant: TenantRecord = {
       slug,
       name,
       adminEmail,
       adminUserId: authUser?.user?.id,
       active,
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
       featureFlags,
+      ...(planId && { planId }),
+      ...(subscriptionInterval && { subscriptionInterval }),
+      ...(subscriptionPeriodEnd && { subscriptionPeriodEnd }),
     };
     await kv.set(TENANTS_KEY, { tenants: [...tenants, newTenant] });
     return c.json({ success: true, data: { ...newTenant, adminUserId: undefined } });
@@ -1961,12 +2085,26 @@ async function superAdminUpdateTenant(c: any) {
         await kv.del(row.key as string);
       }
     }
+    const hasPlanId = Object.prototype.hasOwnProperty.call(body, "planId");
+    const planId = hasPlanId ? (body.planId != null ? String(body.planId).trim() || undefined : undefined) : undefined;
+    const hasSubscriptionInterval = Object.prototype.hasOwnProperty.call(body, "subscriptionInterval");
+    const subscriptionInterval = hasSubscriptionInterval ? (body.subscriptionInterval === "annually" ? "annually" : body.subscriptionInterval === "monthly" ? "monthly" : undefined) : undefined;
+    const hasPeriodEnd = Object.prototype.hasOwnProperty.call(body, "subscriptionPeriodEnd");
+    let subscriptionPeriodEnd = hasPeriodEnd ? (body.subscriptionPeriodEnd != null ? String(body.subscriptionPeriodEnd).trim() || undefined : undefined) : undefined;
+    if (hasSubscriptionInterval && subscriptionInterval && !subscriptionPeriodEnd) {
+      const now = new Date();
+      subscriptionPeriodEnd = addDays(now, subscriptionInterval === "annually" ? 365 : 30);
+    }
+
     const updatedTenants = tenants.map((t) => {
       if (t.slug !== oldSlug) return t;
       const updated: TenantRecord = { ...t, slug: newSlug, name: newName || newSlug };
       if (typeof active === "boolean") updated.active = active;
       if (newAdminEmail) updated.adminEmail = newAdminEmail;
       if (hasFeatureFlagsUpdate && featureFlagsUpdate) updated.featureFlags = featureFlagsUpdate;
+      if (hasPlanId) updated.planId = planId;
+      if (hasSubscriptionInterval) updated.subscriptionInterval = subscriptionInterval;
+      if (subscriptionPeriodEnd != null) updated.subscriptionPeriodEnd = subscriptionPeriodEnd;
       return updated;
     });
     await kv.set(TENANTS_KEY, { tenants: updatedTenants });
@@ -2028,5 +2166,104 @@ async function superAdminDeleteTenant(c: any) {
 }
 app.delete("/super-admin/tenants/:slug", superAdminDeleteTenant);
 app.delete("/make-server-47a828b2/super-admin/tenants/:slug", superAdminDeleteTenant);
+
+// Super Admin: Plans CRUD
+async function superAdminGetPlans(c: any) {
+  try {
+    const auth = await requireSuperAdmin(c);
+    if (!auth.ok) return auth.res;
+    const plans = await getPlansList();
+    return c.json({ success: true, data: plans });
+  } catch (error) {
+    console.error("Error listing plans:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.get("/super-admin/plans", superAdminGetPlans);
+app.get("/make-server-47a828b2/super-admin/plans", superAdminGetPlans);
+
+async function superAdminCreatePlan(c: any) {
+  try {
+    const auth = await requireSuperAdmin(c);
+    if (!auth.ok) return auth.res;
+    const body = await c.req.json();
+    const name = (body.name ?? "").toString().trim();
+    if (!name) return c.json({ success: false, error: "Plan name is required" }, 400);
+    const id = (body.id ?? (name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "") || crypto.randomUUID())).toString().trim();
+    const tier = typeof body.tier === "number" && Number.isFinite(body.tier) ? body.tier : 0;
+    const priceMonthly = typeof body.priceMonthly === "number" && Number.isFinite(body.priceMonthly) ? body.priceMonthly : 0;
+    const priceAnnual = typeof body.priceAnnual === "number" && Number.isFinite(body.priceAnnual) ? body.priceAnnual : 0;
+    const price = priceMonthly;
+    const currency = (body.currency ?? "EGP").toString().trim() || "EGP";
+    const interval = "monthly";
+    const durationMonths = 1;
+    const benefits = Array.isArray(body.benefits) ? body.benefits.filter((b: unknown): b is string => typeof b === "string") : [];
+    const featureFlags = normalizeFeatureFlags(body.featureFlags);
+    const active = body.active !== false;
+    const now = new Date().toISOString();
+    const plans = await getPlansList();
+    if (plans.some((p) => p.id === id)) return c.json({ success: false, error: "Plan id already exists" }, 400);
+    const newPlan: PlanRecord = { id, name, tier, price, priceMonthly, priceAnnual, currency, interval, durationMonths, benefits, featureFlags, active, createdAt: now, updatedAt: now };
+    await kv.set(PLANS_KEY, { plans: [...plans, newPlan] });
+    return c.json({ success: true, data: newPlan });
+  } catch (error) {
+    console.error("Error creating plan:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.post("/super-admin/plans", superAdminCreatePlan);
+app.post("/make-server-47a828b2/super-admin/plans", superAdminCreatePlan);
+
+async function superAdminUpdatePlan(c: any) {
+  try {
+    const auth = await requireSuperAdmin(c);
+    if (!auth.ok) return auth.res;
+    const planId = c.req.param("id");
+    const body = await c.req.json();
+    const plans = await getPlansList();
+    const idx = plans.findIndex((p) => p.id === planId);
+    if (idx < 0) return c.json({ success: false, error: "Plan not found" }, 404);
+    const existing = plans[idx];
+    const name = body.name != null ? String(body.name).trim() : existing.name;
+    const tier = typeof body.tier === "number" && Number.isFinite(body.tier) ? body.tier : existing.tier;
+    const priceMonthly = typeof body.priceMonthly === "number" && Number.isFinite(body.priceMonthly) ? body.priceMonthly : existing.priceMonthly;
+    const priceAnnual = typeof body.priceAnnual === "number" && Number.isFinite(body.priceAnnual) ? body.priceAnnual : existing.priceAnnual;
+    const price = priceMonthly;
+    const currency = body.currency != null ? String(body.currency).trim() || "EGP" : existing.currency;
+    const interval = existing.interval;
+    const durationMonths = existing.durationMonths;
+    const benefits = Array.isArray(body.benefits) ? body.benefits.filter((b: unknown): b is string => typeof b === "string") : existing.benefits;
+    const featureFlags = Object.prototype.hasOwnProperty.call(body, "featureFlags") ? normalizeFeatureFlags(body.featureFlags) : existing.featureFlags;
+    const active = typeof body.active === "boolean" ? body.active : existing.active;
+    const updated: PlanRecord = { ...existing, name: name ?? existing.name, tier, price, priceMonthly, priceAnnual, currency, interval, durationMonths, benefits, featureFlags: featureFlags ?? {}, active, updatedAt: new Date().toISOString() };
+    const updatedPlans = plans.slice();
+    updatedPlans[idx] = updated;
+    await kv.set(PLANS_KEY, { plans: updatedPlans });
+    return c.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Error updating plan:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.put("/super-admin/plans/:id", superAdminUpdatePlan);
+app.put("/make-server-47a828b2/super-admin/plans/:id", superAdminUpdatePlan);
+
+async function superAdminDeletePlan(c: any) {
+  try {
+    const auth = await requireSuperAdmin(c);
+    if (!auth.ok) return auth.res;
+    const planId = c.req.param("id");
+    const plans = await getPlansList();
+    const filtered = plans.filter((p) => p.id !== planId);
+    if (filtered.length === plans.length) return c.json({ success: false, error: "Plan not found" }, 404);
+    await kv.set(PLANS_KEY, { plans: filtered });
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting plan:", error);
+    return c.json({ success: false, error: String(error) }, 500);
+  }
+}
+app.delete("/super-admin/plans/:id", superAdminDeletePlan);
+app.delete("/make-server-47a828b2/super-admin/plans/:id", superAdminDeletePlan);
 
 Deno.serve(app.fetch);

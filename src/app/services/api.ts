@@ -835,8 +835,9 @@ export const initApi = {
 // TENANT SIGNUP (PUBLIC)
 // ============================================
 
+/** Signup payload: Display Name, Tenant Admin Login (email), Slug (URL), password. Backend should set createdAt when the tenant is created. */
 export const tenantSignupApi = {
-  async signup(data: { name: string; adminEmail: string; adminPassword: string }): Promise<{ slug: string; name: string; adminEmail: string }> {
+  async signup(data: { name: string; adminEmail: string; adminPassword: string; slug: string }): Promise<{ slug: string; name: string; adminEmail: string }> {
     const response = await fetch(`${API_BASE}/tenants/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
@@ -859,6 +860,26 @@ export type TenantRecord = {
   adminEmail?: string;
   active?: boolean;
   featureFlags: FeatureFlags;
+  planId?: string;
+  subscriptionInterval?: 'monthly' | 'annually';
+  subscriptionPeriodEnd?: string;
+};
+
+export type PlanRecord = {
+  id: string;
+  name: string;
+  tier: number;
+  price: number;
+  priceMonthly: number;
+  priceAnnual: number;
+  currency: string;
+  interval: 'monthly' | 'annually';
+  durationMonths: number;
+  benefits: string[];
+  featureFlags?: Record<string, boolean>;
+  active: boolean;
+  createdAt: string;
+  updatedAt?: string;
 };
 
 function safeJsonParse<T>(response: Response): Promise<T> {
@@ -907,6 +928,9 @@ export const superAdminApi = {
       adminEmail?: string;
       adminPassword?: string;
       featureFlags?: FeatureFlags;
+      planId?: string;
+      subscriptionInterval?: 'monthly' | 'annually';
+      subscriptionPeriodEnd?: string;
     }
   ): Promise<TenantRecord> {
     const response = await fetch(`${API_BASE}/super-admin/tenants/${encodeURIComponent(oldSlug)}`, {
@@ -927,12 +951,19 @@ export const superAdminApi = {
     adminEmail?: string,
     adminPassword?: string,
     active?: boolean,
-    featureFlags?: FeatureFlags
+    featureFlags?: FeatureFlags,
+    planId?: string | null,
+    subscriptionPeriodEnd?: string | null,
+    subscriptionInterval?: 'monthly' | 'annually' | null
   ): Promise<TenantRecord> {
+    const body: Record<string, unknown> = { slug, name, adminEmail, adminPassword, active, featureFlags };
+    if (planId != null && planId !== '') body.planId = planId;
+    if (subscriptionPeriodEnd != null && subscriptionPeriodEnd !== '') body.subscriptionPeriodEnd = subscriptionPeriodEnd;
+    if (subscriptionInterval === 'monthly' || subscriptionInterval === 'annually') body.subscriptionInterval = subscriptionInterval;
     const response = await fetch(`${API_BASE}/super-admin/tenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'X-Super-Admin-Token': token },
-      body: JSON.stringify({ slug, name, adminEmail, adminPassword, active, featureFlags }),
+      body: JSON.stringify(body),
     });
     const result = await safeJsonParse<{ success?: boolean; data?: Omit<TenantRecord, 'featureFlags'> & { featureFlags?: Record<string, unknown> }; error?: string }>(response);
     if (!result.success) throw new Error(result.error || 'Failed to create tenant');
@@ -972,6 +1003,101 @@ export const superAdminApi = {
     });
     const result = await safeJsonParse<{ success?: boolean; error?: string }>(response);
     if (!result.success) throw new Error(result.error || 'Failed to delete tenant');
+  },
+
+  async getPlans(token: string): Promise<PlanRecord[]> {
+    const response = await fetch(`${API_BASE}/super-admin/plans`, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'X-Super-Admin-Token': token },
+    });
+    if (response.status === 404) return [];
+    const result = await safeJsonParse<{ success?: boolean; data?: PlanRecord[]; error?: string }>(response);
+    if (!result.success) throw new Error(result.error || 'Failed to fetch plans');
+    return result.data ?? [];
+  },
+
+  async createPlan(token: string, body: Omit<PlanRecord, 'createdAt' | 'updatedAt'> & { id?: string }): Promise<PlanRecord> {
+    const response = await fetch(`${API_BASE}/super-admin/plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'X-Super-Admin-Token': token },
+      body: JSON.stringify(body),
+    });
+    const result = await safeJsonParse<{ success?: boolean; data?: PlanRecord; error?: string }>(response);
+    if (!result.success) throw new Error(result.error || 'Failed to create plan');
+    return result.data!;
+  },
+
+  async updatePlan(token: string, id: string, body: Partial<Omit<PlanRecord, 'id' | 'createdAt'>>): Promise<PlanRecord> {
+    const response = await fetch(`${API_BASE}/super-admin/plans/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}`, 'X-Super-Admin-Token': token },
+      body: JSON.stringify(body),
+    });
+    const result = await safeJsonParse<{ success?: boolean; data?: PlanRecord; error?: string }>(response);
+    if (!result.success) throw new Error(result.error || 'Failed to update plan');
+    return result.data!;
+  },
+
+  async deletePlan(token: string, id: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/super-admin/plans/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${publicAnonKey}`, 'X-Super-Admin-Token': token },
+    });
+    const result = await safeJsonParse<{ success?: boolean; error?: string }>(response);
+    if (!result.success) throw new Error(result.error || 'Failed to delete plan');
+  },
+};
+
+/** Public and tenant-scoped plans API (for Settings page). */
+export const plansApi = {
+  /** List active plans (public; send same headers as other API calls for CORS/auth). */
+  async getPlans(): Promise<PlanRecord[]> {
+    const response = await fetch(`${API_BASE}/plans`, { headers: getHeaders() });
+    const result = await safeJsonParse<{ success?: boolean; data?: PlanRecord[]; error?: string }>(response);
+    if (!result.success) throw new Error(result.error || 'Failed to fetch plans');
+    return result.data ?? [];
+  },
+
+  /** Current tenant subscription (planId, subscriptionInterval, subscriptionPeriodEnd, plan). Requires tenant auth. Plan is the full plan record when tenant has a plan. */
+  async getSubscription(): Promise<{
+    planId: string | null;
+    subscriptionInterval: 'monthly' | 'annually' | null;
+    subscriptionPeriodEnd: string | null;
+    plan: PlanRecord | null;
+  }> {
+    const response = await fetch(`${API_BASE}/tenant/subscription`, { headers: getHeaders() });
+    const result = await safeJsonParse<{
+      success?: boolean;
+      data?: { planId?: string | null; subscriptionInterval?: 'monthly' | 'annually' | null; subscriptionPeriodEnd?: string | null; plan?: PlanRecord | null };
+      error?: string;
+    }>(response);
+    if (!result.success) return { planId: null, subscriptionInterval: null, subscriptionPeriodEnd: null, plan: null };
+    const d = result.data;
+    return {
+      planId: d?.planId ?? null,
+      subscriptionInterval: d?.subscriptionInterval === 'annually' ? 'annually' : d?.subscriptionInterval === 'monthly' ? 'monthly' : null,
+      subscriptionPeriodEnd: d?.subscriptionPeriodEnd ?? null,
+      plan: d?.plan ?? null,
+    };
+  },
+};
+
+/** Current tenant profile (name, email, createdAt). Requires auth; returns {} on 404 if not implemented. */
+export const tenantProfileApi = {
+  async getProfile(): Promise<{ name?: string; email?: string; createdAt?: string }> {
+    const url = `${API_BASE}/tenant/profile`;
+    try {
+      const response = await fetchWithRetry(url, { headers: getHeaders() });
+      if (response.status === 404) return {};
+      const result = await safeJsonParse<{
+        success?: boolean;
+        data?: { name?: string; email?: string; createdAt?: string };
+        error?: string;
+      }>(response);
+      if (!response.ok || !result.success) return {};
+      return result.data ?? {};
+    } catch {
+      return {};
+    }
   },
 };
 

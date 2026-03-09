@@ -11,6 +11,7 @@ Main Course,اطباق رئيسية,White Sauce Pasta,مكرونة وايت صو
 
 interface SheetImporterProps {
   existingItems: MenuItem[];
+  categories: Category[];
   onImportItems: (upsert: { toAdd: MenuItem[]; toUpdate: MenuItem[] }) => Promise<void>;
   onImportCategories: (categories: Category[]) => Promise<void>;
   onClose: () => void;
@@ -63,7 +64,18 @@ function splitPrices(value: string | undefined): number[] {
   });
 }
 
-export function SheetImporter({ existingItems, onImportItems, onImportCategories, onClose }: SheetImporterProps) {
+/** Escape a CSV field: wrap in quotes if needed and double internal quotes. */
+function csvEscape(value: string): string {
+  const s = String(value ?? '');
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+const EXPORT_CSV_HEADERS = 'category_name_en,category_name_ar,name_en,name_ar,options_names_en,options_names_ar,option_prices,is_popular,description_en,description_ar,id';
+
+export function SheetImporter({ existingItems, categories, onImportItems, onImportCategories, onClose }: SheetImporterProps) {
   const { t, dir } = useAdminLanguage();
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ImportResult | null>(null);
@@ -78,6 +90,50 @@ export function SheetImporter({ existingItems, onImportItems, onImportCategories
     a.click();
     URL.revokeObjectURL(url);
     toast.success(t('importPopup.templateDownloaded'));
+  };
+
+  /** Export current menu items in the same format as the import template so user can add more and re-upload. */
+  const downloadCurrentMenu = () => {
+    const categoryAr = new Map<string, string>();
+    categories.forEach((c) => categoryAr.set(c.name, c.nameAr ?? ''));
+    const rows = existingItems
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((item) => {
+        const catAr = categoryAr.get(item.category) ?? '';
+        const nameEn = item.nameEn ?? item.name ?? '';
+        const nameAr = item.nameAr ?? '';
+        const optionsEn = item.priceVariants?.map((v) => v.nameEn ?? v.name ?? '').join(',') ?? '';
+        const optionsAr = item.priceVariants?.map((v) => v.nameAr ?? '').join(',') ?? '';
+        const prices = item.priceVariants?.length
+          ? item.priceVariants.map((v) => String(v.price)).join(',')
+          : String(item.price ?? '');
+        const popular = item.isPopular ? 'yes' : 'no';
+        const descEn = item.descriptionEn ?? item.description ?? '';
+        const descAr = item.descriptionAr ?? '';
+        const id = item.id ?? '';
+        return [
+          csvEscape(item.category),
+          csvEscape(catAr),
+          csvEscape(nameEn),
+          csvEscape(nameAr),
+          csvEscape(optionsEn),
+          csvEscape(optionsAr),
+          csvEscape(prices),
+          csvEscape(popular),
+          csvEscape(descEn),
+          csvEscape(descAr),
+          csvEscape(id),
+        ].join(',');
+      });
+    const csv = '\uFEFF' + EXPORT_CSV_HEADERS + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'menu-export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(t('importPopup.currentMenuDownloaded'));
   };
 
   const parseExcelFile = (file: File): Promise<ImportResult> => {
@@ -313,38 +369,62 @@ export function SheetImporter({ existingItems, onImportItems, onImportCategories
         <div className="flex-1 overflow-y-auto p-6">
           {!preview ? (
             <div>
-              {/* Download template first */}
-              <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#f9faf3] border border-stone-200 rounded-lg">
-                <div>
-                  <h3 className="font-semibold text-[#101010] mb-1">{t('importPopup.step1Title')}</h3>
-                  <p className="text-sm text-[#52525c]">{t('importPopup.step1Desc')}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={downloadTemplate}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#101010] text-[#cfff5e] rounded-lg hover:bg-[#cfff5e] hover:text-[#101010] transition-colors font-medium shrink-0"
-                >
-                  <Download size={18} />
-                  {t('importPopup.downloadTemplate')}
-                </button>
-              </div>
+              {existingItems.length === 0 ? (
+                <>
+                  {/* Empty menu: 1. Download template, 2. Template columns, 3. Upload */}
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#f9faf3] border border-stone-200 rounded-lg">
+                    <div>
+                      <h3 className="font-semibold text-[#101010] mb-1">{t('importPopup.step1Title')}</h3>
+                      <p className="text-sm text-[#52525c]">{t('importPopup.step1Desc')}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={downloadTemplate}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#101010] text-[#cfff5e] rounded-lg hover:bg-[#cfff5e] hover:text-[#101010] transition-colors font-medium shrink-0"
+                    >
+                      <Download size={18} />
+                      {t('importPopup.downloadTemplate')}
+                    </button>
+                  </div>
 
-              {/* Instructions */}
-              <div className="bg-[#f9faf3] border border-stone-200 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-[#101010] mb-2">{t('importPopup.step2Title')}</h3>
-                <ul className="text-sm text-[#52525c] space-y-1 list-disc list-inside">
-                  <li>{t('importPopup.colCategory')}</li>
-                  <li>{t('importPopup.colName')}</li>
-                  <li>{t('importPopup.colOptions')}</li>
-                  <li>{t('importPopup.colPrices')}</li>
-                  <li>{t('importPopup.colPopular')}</li>
-                  <li>{t('importPopup.colDesc')}</li>
-                  <li>{t('importPopup.colId')}</li>
-                </ul>
-              </div>
+                  <div className="bg-[#f9faf3] border border-stone-200 rounded-lg p-4 mb-6">
+                    <h3 className="font-semibold text-[#101010] mb-2">{t('importPopup.step2Title')}</h3>
+                    <ul className="text-sm text-[#52525c] space-y-1 list-disc list-inside">
+                      <li>{t('importPopup.colCategory')}</li>
+                      <li>{t('importPopup.colName')}</li>
+                      <li>{t('importPopup.colOptions')}</li>
+                      <li>{t('importPopup.colPrices')}</li>
+                      <li>{t('importPopup.colPopular')}</li>
+                      <li>{t('importPopup.colDesc')}</li>
+                      <li>{t('importPopup.colId')}</li>
+                    </ul>
+                  </div>
+
+                  <h3 className="font-semibold text-[#101010] mb-2">{t('importPopup.step3Title')}</h3>
+                </>
+              ) : (
+                <>
+                  {/* Has items: 1. Export current menu, 2. Upload your filled file */}
+                  <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-[#f9faf3] border border-stone-200 rounded-lg">
+                    <div>
+                      <h3 className="font-semibold text-[#101010] mb-1">{t('importPopup.step1ExportTitle')}</h3>
+                      <p className="text-sm text-[#52525c]">{t('importPopup.step1ExportDesc')}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={downloadCurrentMenu}
+                      className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#101010] text-[#cfff5e] rounded-lg hover:bg-[#cfff5e] hover:text-[#101010] transition-colors font-medium shrink-0"
+                    >
+                      <Download size={18} />
+                      {t('importPopup.downloadCurrentMenu')}
+                    </button>
+                  </div>
+
+                  <h3 className="font-semibold text-[#101010] mb-2">{t('importPopup.step2UploadTitle')}</h3>
+                </>
+              )}
 
               {/* File Upload */}
-              <h3 className="font-semibold text-[#101010] mb-2">{t('importPopup.step3Title')}</h3>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-green-500 transition-colors">
                 <input
                   ref={fileInputRef}

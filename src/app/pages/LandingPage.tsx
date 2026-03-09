@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
-import { Building2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Building2, Mail, Lock, Eye, EyeOff, Link2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { toast } from 'sonner';
 import { tenantSignupApi } from '../services/api';
@@ -8,11 +8,14 @@ import { trackLandingCtaClick } from '../lib/analytics';
 
 export default function LandingPage() {
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const normalizedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +29,14 @@ export default function LandingPage() {
       toast.error('اسم المطعم مطلوب');
       return;
     }
+    if (!normalizedSlug) {
+      toast.error('الرابط (Slug) مطلوب');
+      return;
+    }
+    if (normalizedSlug.length < 2) {
+      toast.error('الرابط يجب أن يكون حرفين على الأقل');
+      return;
+    }
     if (!adminEmail.trim()) {
       toast.error('البريد الإلكتروني للمدير مطلوب');
       return;
@@ -36,7 +47,12 @@ export default function LandingPage() {
     }
     try {
       setIsLoading(true);
-      const result = await tenantSignupApi.signup({ name: name.trim(), adminEmail: adminEmail.trim(), adminPassword });
+      const result = await tenantSignupApi.signup({
+        name: name.trim(),
+        adminEmail: adminEmail.trim(),
+        adminPassword,
+        slug: normalizedSlug,
+      });
       toast.success(`تم إنشاء مطعم "${result.name}". سجّل الدخول باستخدام البريد الإلكتروني وكلمة المرور.`);
       navigate('/login');
     } catch (err) {
@@ -132,6 +148,29 @@ export default function LandingPage() {
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            {/* Slug (URL) */}
+            <div>
+              <label htmlFor="slug" className="block text-sm font-medium text-[#52525c] mb-2">
+                الرابط (Slug)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Link2 className="text-stone-400" size={20} />
+                </div>
+                <input
+                  id="slug"
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  className="block w-full pr-10 pl-3 py-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#cfff5e] focus:border-[#cfff5e] outline-none transition-all lowercase"
+                  placeholder="my-restaurant"
+                  disabled={isLoading}
+                  autoComplete="off"
+                />
+              </div>
+              <p className="mt-1 text-xs text-[#52525c]">رابط المنيو: /t/{normalizedSlug || '...'}</p>
             </div>
 
             {/* Admin Email */}

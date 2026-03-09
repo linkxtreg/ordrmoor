@@ -56,6 +56,8 @@ export interface Category {
   nameAr?: string;
   /** English description (optional, dual-language). */
   descriptionEn?: string;
+  /** When false, category is hidden from the customer menu (e.g. seasonal). Default true. */
+  isAvailable?: boolean;
 }
 
 /** Single source of truth for tenant branding and contact. All menu views use this for color, logo, cover, tagline/bio, phone, social. */

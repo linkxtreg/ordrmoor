@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Coins, MapPin, Tag } from 'lucide-react';
+import { Coins, MapPin, Tag, Settings } from 'lucide-react';
 import { AdminLayout } from '@/app/components/AdminLayout';
 import { MenusSidebar } from '@/app/components/MenusSidebar';
 import { MenuManagementContent } from '@/app/components/MenuManagementContent';
@@ -7,6 +7,7 @@ import { GeneralInfoManagement } from '@/app/components/GeneralInfoManagement';
 import { AddressesManagement } from '@/app/components/AddressesManagement';
 import { OffersManagement } from '@/app/components/OffersManagement';
 import { LoyaltyManagement } from '@/app/components/LoyaltyManagement';
+import { SettingsManagement } from '@/app/components/SettingsManagement';
 import { Menu, GeneralInfo, BranchAddress } from '@/app/types/menu';
 import { menusApi, generalInfoApi, addressesApi } from '@/app/services/api';
 import { toast, Toaster } from 'sonner';
@@ -104,21 +105,25 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
     () => menus.find((m) => m.id === selectedMenuId),
     [menus, selectedMenuId]
   );
+  const breadcrumb = useMemo(() => {
+    if (activeSection === 'general') return t('layout.generalInfo');
+    if (activeSection === 'menu') return selectedMenu ? `${t('menus.title')} > ${selectedMenu.name}` : t('menus.title');
+    if (activeSection === 'offers') return t('layout.offers');
+    if (activeSection === 'loyalty') return t('layout.loyalty');
+    if (activeSection === 'addresses') return t('layout.addresses');
+    if (activeSection === 'settings') return t('layout.settings');
+    return '';
+  }, [activeSection, selectedMenu, t]);
   const isAddressesEnabled = isEnabled('addresses');
   const isOffersEnabled = isEnabled('offers');
   const isLoyaltyEnabled = isEnabled('loyalty');
 
   const extraNavItems = useMemo(
     () => [
-      ...(isOffersEnabled
-        ? [{ key: 'offers', label: t('layout.offers'), icon: <Tag size={20} /> }]
-        : []),
-      ...(isLoyaltyEnabled
-        ? [{ key: 'loyalty', label: t('layout.loyalty'), icon: <Coins size={20} /> }]
-        : []),
-      ...(isAddressesEnabled
-        ? [{ key: 'addresses', label: t('layout.addresses'), icon: <MapPin size={20} /> }]
-        : []),
+      { key: 'offers', label: t('layout.offers'), icon: <Tag size={20} />, ...(isOffersEnabled ? {} : { comingSoon: true }) },
+      { key: 'addresses', label: t('layout.addresses'), icon: <MapPin size={20} />, ...(isAddressesEnabled ? {} : { comingSoon: true }) },
+      { key: 'loyalty', label: t('layout.loyalty'), icon: <Coins size={20} />, ...(isLoyaltyEnabled ? {} : { comingSoon: true }) },
+      { key: 'settings', label: t('layout.settings'), icon: <Settings size={20} /> },
     ],
     [isAddressesEnabled, isOffersEnabled, isLoyaltyEnabled, t]
   );
@@ -171,13 +176,14 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
 
   return (
     <div className="size-full">
-      <AdminLayout 
-        activeSection={activeSection} 
+      <AdminLayout
+        activeSection={activeSection}
         onSectionChange={(section) => {
           setActiveSection(section);
           if (section === 'general') setSelectedMenuId(null);
         }}
         onLogout={onLogout}
+        breadcrumb={breadcrumb}
         sidebarMenus={({ onCloseMenu }) => (
           <MenusSidebar
             menus={menus}
@@ -237,6 +243,8 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
           <OffersManagement />
         ) : activeSection === 'loyalty' && isLoyaltyEnabled ? (
           <LoyaltyManagement />
+        ) : activeSection === 'settings' ? (
+          <SettingsManagement />
         ) : null}
       </AdminLayout>
       <Toaster />
