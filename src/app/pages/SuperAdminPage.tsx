@@ -40,8 +40,7 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
   const [planPriceMonthly, setPlanPriceMonthly] = useState(0);
   const [planPriceAnnual, setPlanPriceAnnual] = useState(0);
   const planCurrency = 'EGP';
-  const [planInterval, setPlanInterval] = useState<'monthly' | 'annually'>('monthly');
-  const [planDurationMonths, setPlanDurationMonths] = useState(1);
+  // Plans are always stored as monthly + annual prices; interval/duration are fixed in backend.
   const [planTier, setPlanTier] = useState(0);
   const [planBenefits, setPlanBenefits] = useState<string[]>(['']);
   const [planActive, setPlanActive] = useState(true);
@@ -201,8 +200,6 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
     setPlanName('');
     setPlanPriceMonthly(0);
     setPlanPriceAnnual(0);
-    setPlanInterval('monthly');
-    setPlanDurationMonths(1);
     setPlanTier(0);
     setPlanBenefits(['']);
     setPlanActive(true);
@@ -222,9 +219,7 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
     setEditingPlanId(p.id);
     setPlanName(p.name);
     setPlanPriceMonthly(p.priceMonthly ?? p.price);
-    setPlanPriceAnnual(p.priceAnnual ?? p.price * 12);
-    setPlanInterval(p.interval);
-    setPlanDurationMonths(p.durationMonths);
+    setPlanPriceAnnual(p.priceAnnual ?? p.priceAnnual ?? (p.priceMonthly ?? p.price) * 12);
     setPlanTier(p.tier);
     setPlanBenefits(p.benefits.length ? p.benefits : ['']);
     setPlanFeatureFlags(resolveFeatureFlags(p.featureFlags));
@@ -246,16 +241,18 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
     }
     try {
       setIsSavingPlan(true);
+      const monthly = planPriceMonthly;
+      const annual = planPriceAnnual;
       if (editingPlanId) {
         await superAdminApi.updatePlan(token, editingPlanId, {
           name,
           tier: planTier,
-          price: planPriceMonthly,
-          priceMonthly: planPriceMonthly,
-          priceAnnual: planPriceAnnual,
+          price: monthly,
+          priceMonthly: monthly,
+          priceAnnual: annual,
           currency: planCurrency,
-          interval: planInterval,
-          durationMonths: planDurationMonths,
+          interval: 'monthly',
+          durationMonths: 1,
           benefits,
           featureFlags: planFeatureFlags,
           active: planActive,
@@ -266,12 +263,12 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
           id,
           name,
           tier: planTier,
-          price: planPriceMonthly,
-          priceMonthly: planPriceMonthly,
-          priceAnnual: planPriceAnnual,
+          price: monthly,
+          priceMonthly: monthly,
+          priceAnnual: annual,
           currency: planCurrency,
-          interval: planInterval,
-          durationMonths: planDurationMonths,
+          interval: 'monthly',
+          durationMonths: 1,
           benefits,
           featureFlags: planFeatureFlags,
           active: planActive,
@@ -435,8 +432,15 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
                   const planId = newPlanId || plans.filter((p) => p.active).sort((a, b) => a.tier - b.tier)[0]?.id;
                   const plan = planId ? plans.find((p) => p.id === planId) : null;
                   if (!plan) return null;
-                  const price = newSubscriptionInterval === 'annually' ? (plan.priceAnnual ?? plan.price * 12) : (plan.priceMonthly ?? plan.price);
-                  const label = newSubscriptionInterval === 'annually' ? `EGP ${price} / year` : `EGP ${price} / month`;
+                  const monthly = typeof plan.priceMonthly === 'number' ? plan.priceMonthly : undefined;
+                  const annual = typeof plan.priceAnnual === 'number' ? plan.priceAnnual : undefined;
+                  if (newSubscriptionInterval === 'annually') {
+                    if (annual == null) return null;
+                    const label = `EGP ${annual} / year`;
+                    return <p className="text-xs text-[#52525c] mt-1">Price: {label}</p>;
+                  }
+                  if (monthly == null) return null;
+                  const label = `EGP ${monthly} / month`;
                   return <p className="text-xs text-[#52525c] mt-1">Price: {label}</p>;
                 })()}
               </div>
@@ -563,8 +567,15 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
                               const planId = editPlanId || plans.filter((p) => p.active).sort((a, b) => a.tier - b.tier)[0]?.id;
                               const plan = planId ? plans.find((p) => p.id === planId) : null;
                               if (!plan) return null;
-                              const price = editSubscriptionInterval === 'annually' ? (plan.priceAnnual ?? plan.price * 12) : (plan.priceMonthly ?? plan.price);
-                              const label = editSubscriptionInterval === 'annually' ? `EGP ${price} / year` : `EGP ${price} / month`;
+                              const monthly = typeof plan.priceMonthly === 'number' ? plan.priceMonthly : undefined;
+                              const annual = typeof plan.priceAnnual === 'number' ? plan.priceAnnual : undefined;
+                              if (editSubscriptionInterval === 'annually') {
+                                if (annual == null) return null;
+                                const label = `EGP ${annual} / year`;
+                                return <p className="text-xs text-[#52525c] mt-1">Price: {label}</p>;
+                              }
+                              if (monthly == null) return null;
+                              const label = `EGP ${monthly} / month`;
                               return <p className="text-xs text-[#52525c] mt-1">Price: {label}</p>;
                             })()}
                           </div>
@@ -732,6 +743,7 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
                   onChange={(e) => setPlanPriceAnnual(Number(e.target.value) || 0)}
                   className="w-full px-4 py-2.5 border border-stone-300 rounded-lg focus:ring-2 focus:ring-[#cfff5e] focus:border-[#cfff5e] text-sm"
                 />
+                <p className="text-xs text-[#52525c] mt-1">Used directly for yearly billing (no auto ×12).</p>
               </div>
             </div>
             <div>
@@ -828,7 +840,7 @@ export default function SuperAdminPage({ token, onLogout }: SuperAdminPageProps)
                       <p className="font-medium text-[#101010]">{p.name}</p>
                       <p className="text-sm text-[#52525c] font-mono">{p.id}</p>
                       <p className="text-sm text-[#52525c] mt-0.5">
-                        {p.currency} {p.priceMonthly ?? p.price} / month · {p.priceAnnual ?? p.price * 12} / year · Tier {p.tier} {!p.active && <span className="text-amber-600">(inactive)</span>}
+                        {p.currency} {(p.priceMonthly ?? p.price).toLocaleString('en-US')} / month · {p.priceAnnual?.toLocaleString('en-US') ?? ((p.priceMonthly ?? p.price) * 12).toLocaleString('en-US')} / year · Tier {p.tier} {!p.active && <span className="text-amber-600">(inactive)</span>}
                       </p>
                     </div>
                   </div>

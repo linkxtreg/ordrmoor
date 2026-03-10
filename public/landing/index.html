@@ -913,7 +913,7 @@
 
         .pricing-amount .price {
             font-family: 'Hanson', 'Montserrat', sans-serif;
-            font-size: 48px;
+            font-size: 36px;
             font-weight: 700;
         }
 
@@ -1115,8 +1115,18 @@
             margin-top: 24px;
         }
 
+        .hero-main-cta {
+            background: var(--neon-green);
+            color: var(--black);
+        }
+
+        .hero-main-cta:hover {
+            background-color: #f9faf3;
+            color: var(--black);
+        }
+
         .management-cta {
-            margin-top: 24px;
+            margin-top: 40px;
         }
 
         /* Footer */
@@ -1705,8 +1715,7 @@
                 <a href="#pricing">الأسعار</a>
             </div>
             <div class="nav-ctas">
-                <a href="/signup" class="nav-signup" target="_top">سجل مطعمك دلوقتي</a>
-                <a href="/login" class="nav-login" target="_top">تسجيل الدخول</a>
+                <a href="/signup" class="nav-signup" target="_top">ابدأ دلوقتي</a>
             </div>
         </div>
     </nav>
@@ -1720,6 +1729,7 @@
                 </h1>
                 <p class="hero-subtitle">
                     حول المنيو لسيستم ذكي، شيك، بيسهل التشغيل وبيزود قيمة الأوردر.                </p>
+                <a href="/signup" class="signup-cta hero-cta hero-main-cta" target="_top">سجل مطعمك دلوقتي</a>
             </div>
             <div class="hero-left">
                 <div class="hero-phones">
@@ -1839,6 +1849,7 @@
             <div class="dashboard-preview">
                 <video src="Images/Menu-manage.webm" autoplay muted loop playsinline title="نظام إدارة المنيو"></video>
             </div>
+            <a href="/signup" class="signup-cta management-cta hero-main-cta" target="_top">سجل مطعمك دلوقتي</a>
         </div>
     </section>
 
@@ -2023,116 +2034,8 @@
                 </div>
             </div>
 
-            <div class="pricing-grid stagger-cards">
-                <!-- 1: الاساسية (Basic) -->
-                <div class="pricing-card" data-monthly="2,400" data-annual="2,000">
-                    <p class="pricing-plan">الاساسية</p>
-                    <div class="pricing-amount">
-                        <span class="price" id="starterPrice">2,000</span>
-                        <span class="period" id="starterPeriod">/ شهرياً</span>
-                    </div>
-                    <div class="pricing-features">
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>عناصر منيو لا محدودة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>زيارات لا محدودة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>لينك خاص</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>لوحة تحكم</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2: المتقدمة (Advance) - في النص -->
-                <div class="pricing-card featured" data-monthly="3,600" data-annual="3,000">
-                    <div class="pricing-badge">الأكثر طلباً</div>
-                    <p class="pricing-plan">المتقدمة</p>
-                    <div class="pricing-amount">
-                        <span class="price">3,000</span>
-                        <span class="period">/ شهرياً</span>
-                    </div>
-                    <div class="pricing-features">
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>عناصر منيو لا محدودة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>زيارات لا محدودة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>لينك خاص</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>لوحة تحكم</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>مدير حساب</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3: الاحترافية (Pro) -->
-                <div class="pricing-card" data-monthly="6,000" data-annual="5,000">
-                    <p class="pricing-plan">الاحترافية</p>
-                    <div class="pricing-amount">
-                        <span class="price" id="proPrice">5,000</span>
-                        <span class="period" id="proPeriod">/ شهرياً</span>
-                    </div>
-                    <div class="pricing-features">
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>عناصر منيو لا محدودة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>زيارات لا محدودة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>لينك خاص</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>لوحة تحكم</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>مدير حساب</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>إدارة العروض</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>إدارة فروع متعددة</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>نظام الولاء</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>تقارير</span>
-                        </div>
-                        <div class="pricing-feature">
-                            <div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                            <span>دعم فني</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="pricing-grid stagger-cards" id="pricingGrid">
+                <p id="pricingLoading" style="grid-column: 1 / -1; text-align: center; color: var(--gray-text);">جاري تحميل الباقات...</p>
             </div>
         </div>
     </section>
@@ -2239,30 +2142,128 @@
                 if (!el.closest('.stagger-cards')) observer.observe(el);
             });
 
-            // Pricing toggle (Monthly / Annual)
+            // Pricing: load plans from Super Admin API and support Monthly / Annual toggle.
             (function() {
                 const toggle = document.getElementById('pricingToggle');
-                const cards = document.querySelectorAll('.pricing-card[data-monthly][data-annual]');
-                if (!toggle || !cards.length) return;
-                const buttons = toggle.querySelectorAll('button');
+                const pricingGrid = document.getElementById('pricingGrid');
+                const buttons = toggle ? toggle.querySelectorAll('button[data-interval]') : [];
+                if (!toggle || !pricingGrid || !buttons.length) return;
+
+                const API_URL = 'https://pfrpliybqegikexwuokl.supabase.co/functions/v1/make-server-47a828b2/plans';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBmcnBsaXlicWVnaWtleHd1b2tsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MjQ2NTEsImV4cCI6MjA4NDUwMDY1MX0.AYUINv36Kcvhpti0r_lJ3b2mJu1nV14tAVa1PPT0Y20';
+                let currentInterval = 'annual';
+
+                function formatPrice(value) {
+                    const numeric = Number(value) || 0;
+                    return numeric.toLocaleString('en-US');
+                }
+
+                function escapeHtml(text) {
+                    return String(text)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function renderPlans(plans) {
+                    if (!Array.isArray(plans) || plans.length === 0) {
+                        pricingGrid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--gray-text);">لا توجد باقات متاحة حالياً.</p>';
+                        return;
+                    }
+
+                    const sorted = plans
+                        .filter(function(plan) { return plan && plan.active !== false; })
+                        .sort(function(a, b) { return (Number(a.tier) || 0) - (Number(b.tier) || 0); });
+
+                    if (!sorted.length) {
+                        pricingGrid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--gray-text);">لا توجد باقات متاحة حالياً.</p>';
+                        return;
+                    }
+
+                    pricingGrid.innerHTML = sorted.map(function(plan, index) {
+                        const monthly = Number(plan.priceMonthly ?? plan.price ?? 0);
+                        const annual = Number(plan.priceAnnual ?? (monthly * 12));
+                        const featured = sorted.length >= 3 && index === 1;
+                        const benefits = Array.isArray(plan.benefits) ? plan.benefits : [];
+                        const safeName = escapeHtml(plan.name || plan.id || 'Plan');
+                        const benefitsHtml = benefits.map(function(benefit) {
+                            return '' +
+                                '<div class="pricing-feature">' +
+                                    '<div class="check"><svg viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+                                    '<span>' + escapeHtml(benefit) + '</span>' +
+                                '</div>';
+                        }).join('');
+
+                        return '' +
+                            '<div class="pricing-card' + (featured ? ' featured' : '') + '" data-monthly="' + monthly + '" data-annual="' + annual + '">' +
+                                (featured ? '<div class="pricing-badge">الأكثر طلباً</div>' : '') +
+                                '<p class="pricing-plan">' + safeName + '</p>' +
+                                '<div class="pricing-amount">' +
+                                    '<span class="price">' + formatPrice(annual) + '</span>' +
+                                    '<span class="period">/ سنوياً</span>' +
+                                '</div>' +
+                                '<div class="pricing-features">' + benefitsHtml + '</div>' +
+                            '</div>';
+                    }).join('');
+                }
+
                 function applyInterval(interval) {
+                    currentInterval = interval === 'monthly' ? 'monthly' : 'annual';
                     buttons.forEach(function(btn) {
-                        var isAnnual = btn.dataset.interval === 'annual';
-                        btn.classList.toggle('active', isAnnual === (interval === 'annual'));
-                        btn.setAttribute('aria-selected', isAnnual === (interval === 'annual'));
+                        const isAnnual = btn.dataset.interval === 'annual';
+                        const active = isAnnual === (currentInterval === 'annual');
+                        btn.classList.toggle('active', active);
+                        btn.setAttribute('aria-selected', active ? 'true' : 'false');
                     });
+
+                    const cards = pricingGrid.querySelectorAll('.pricing-card[data-monthly][data-annual]');
                     cards.forEach(function(card) {
-                        var priceEl = card.querySelector('.price');
-                        var periodEl = card.querySelector('.period');
-                        if (priceEl) priceEl.textContent = interval === 'annual' ? card.dataset.annual : card.dataset.monthly;
-                        if (periodEl) periodEl.textContent = '/ شهرياً';
+                        const priceEl = card.querySelector('.price');
+                        const periodEl = card.querySelector('.period');
+                        const monthly = card.getAttribute('data-monthly') || '0';
+                        const annual = card.getAttribute('data-annual') || '0';
+                        if (priceEl) {
+                            priceEl.textContent = formatPrice(currentInterval === 'annual' ? annual : monthly);
+                        }
+                        if (periodEl) {
+                            periodEl.textContent = currentInterval === 'annual' ? '/ سنوياً' : '/ شهرياً';
+                        }
                     });
                 }
-                applyInterval('annual');
+
                 toggle.addEventListener('click', function(e) {
-                    var btn = e.target.closest('button[data-interval]');
-                    if (btn) applyInterval(btn.dataset.interval);
+                    const btn = e.target.closest('button[data-interval]');
+                    if (!btn) return;
+                    applyInterval(btn.dataset.interval);
                 });
+
+                fetch(API_URL + '?t=' + Date.now(), {
+                    headers: {
+                        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+                    }
+                })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            return response.text().then(function(bodyText) {
+                                throw new Error('HTTP ' + response.status + (bodyText ? (': ' + bodyText) : ''));
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function(result) {
+                        if (!result || result.success !== true) {
+                            throw new Error((result && result.error) || 'Failed to load plans');
+                        }
+                        renderPlans(result.data);
+                        applyInterval(currentInterval);
+                    })
+                    .catch(function(error) {
+                        var details = '';
+                        if (error && error.message) details = ' (' + error.message + ')';
+                        pricingGrid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #b45309;">تعذر تحميل الباقات حالياً.' + details + '</p>';
+                    });
             })();
 
             // Testimonial slider (2 items) – auto-advance (RTL-aware)
