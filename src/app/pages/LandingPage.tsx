@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
+import { Helmet } from 'react-helmet-async';
 import { Building2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { toast } from 'sonner';
@@ -103,6 +104,20 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-3 lg:items-stretch" dir="rtl">
+      <Helmet>
+        <title>OrdrMoor | Digital Menu Platform for Restaurants</title>
+        <meta name="description" content="Create your restaurant's digital menu in minutes. Share via QR code instantly." />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="OrdrMoor | Digital Menu Platform for Restaurants" />
+        <meta property="og:description" content="Create your restaurant's digital menu in minutes. Share via QR code instantly." />
+        <meta property="og:image" content="https://ordrmoor.netlify.app/landing/Images/ordrmoor-logo.png" />
+        <meta property="og:url" content="https://ordrmoor.netlify.app/signup" />
+        <meta property="og:site_name" content="OrdrMoor" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="OrdrMoor | Digital Menu Platform for Restaurants" />
+        <meta name="twitter:description" content="Create your restaurant's digital menu in minutes. Share via QR code instantly." />
+        <meta name="twitter:image" content="https://ordrmoor.netlify.app/landing/Images/ordrmoor-logo.png" />
+      </Helmet>
       {/* Right column: Form (2/3) */}
       <div className="flex items-center justify-center p-4 lg:p-8 lg:col-span-2 bg-[#fff]">
         <div className="w-full max-w-md">
