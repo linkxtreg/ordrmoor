@@ -17,6 +17,12 @@ export const FEATURE_DEFINITIONS = [
     description: 'Show the Loyalty page in tenant admin.',
     defaultValue: false,
   },
+  {
+    key: 'multiMenus',
+    label: 'Multiple menus',
+    description: 'Allow tenant to create and manage multiple menus instead of a single menu.',
+    defaultValue: false,
+  },
 ] as const;
 
 export type FeatureFlagDefinition = (typeof FEATURE_DEFINITIONS)[number];

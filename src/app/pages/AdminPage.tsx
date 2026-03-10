@@ -117,6 +117,7 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
   const isAddressesEnabled = isEnabled('addresses');
   const isOffersEnabled = isEnabled('offers');
   const isLoyaltyEnabled = isEnabled('loyalty');
+   const canHaveMultipleMenus = isEnabled('multiMenus');
 
   const extraNavItems = useMemo(
     () => [
@@ -191,6 +192,7 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
             onSelectMenu={handleSelectMenu}
             onMenusChange={loadAllData}
             onCloseMenu={onCloseMenu}
+            canCreateMoreMenus={canHaveMultipleMenus || menus.length === 0}
           />
         )}
         extraNavItems={extraNavItems}
@@ -206,6 +208,7 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
             key={selectedMenu.id}
             menu={selectedMenu}
             onMenusChange={loadAllData}
+            canDuplicateMenu={canHaveMultipleMenus}
             onAfterDuplicate={(newId) => {
               setSelectedMenuId(newId);
             }}

@@ -14,6 +14,7 @@ interface MenusSidebarProps {
   onSelectMenu: (id: string | null) => void;
   onMenusChange: () => void;
   onCloseMenu?: () => void;
+  canCreateMoreMenus: boolean;
 }
 
 export const MenusSidebar = memo(function MenusSidebar({
@@ -22,6 +23,7 @@ export const MenusSidebar = memo(function MenusSidebar({
   onSelectMenu,
   onMenusChange,
   onCloseMenu,
+  canCreateMoreMenus,
 }: MenusSidebarProps) {
   const { t } = useAdminLanguage();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -55,14 +57,16 @@ export const MenusSidebar = memo(function MenusSidebar({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 px-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('menus.title')}</span>
-        <button
-          onClick={() => setIsCreateOpen(true)}
-          className="flex items-center gap-1 text-sm font-medium text-[#101010] hover:text-[#101010]/80 transition-colors"
-          title={t('menus.createNew')}
-        >
-          <Plus size={14} className="shrink-0" />
-          <span>{t('layout.addNew')}</span>
-        </button>
+        {canCreateMoreMenus && (
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center gap-1 text-sm font-medium text-[#101010] hover:text-[#101010]/80 transition-colors"
+            title={t('menus.createNew')}
+          >
+            <Plus size={14} className="shrink-0" />
+            <span>{t('layout.addNew')}</span>
+          </button>
+        )}
       </div>
 
       <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if (!open) setNewMenuName(''); }}>
@@ -136,12 +140,14 @@ export const MenusSidebar = memo(function MenusSidebar({
       {menus.length === 0 && (
         <div className="text-center py-6 text-gray-500 text-sm px-2">
           <p className="mb-2">{t('menus.noMenusYet')}</p>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="text-[#101010] hover:underline font-medium"
-          >
-            {t('menus.createFirstMenu')}
-          </button>
+          {canCreateMoreMenus && (
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="text-[#101010] hover:underline font-medium"
+            >
+              {t('menus.createFirstMenu')}
+            </button>
+          )}
         </div>
       )}
     </div>

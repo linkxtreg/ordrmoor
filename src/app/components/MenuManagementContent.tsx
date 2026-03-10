@@ -14,6 +14,7 @@ interface MenuManagementContentProps {
   onMenusChange: () => void | Promise<void>;
   onAfterDuplicate: (newMenuId: string) => void;
   onAfterDelete: (deletedMenuId: string) => void;
+  canDuplicateMenu: boolean;
 }
 
 export function MenuManagementContent({
@@ -21,6 +22,7 @@ export function MenuManagementContent({
   onMenusChange,
   onAfterDuplicate,
   onAfterDelete,
+  canDuplicateMenu,
 }: MenuManagementContentProps) {
   const { id: menuId, name: menuName, slug } = menu;
   const { basePath } = useTenant();
@@ -247,6 +249,10 @@ export function MenuManagementContent({
   };
 
   const handleDuplicateMenu = async () => {
+    if (!canDuplicateMenu) {
+      toast.error(t('toasts.cannotDuplicateMenuPlanLimit'));
+      return;
+    }
     try {
       const duplicated = await menusApi.duplicate(menuId);
       onMenusChange();
@@ -338,8 +344,9 @@ export function MenuManagementContent({
               </button>
               <button
                 onClick={handleDuplicateMenu}
-                className="p-2.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                className="p-2.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title={t('menuContent.duplicate')}
+                disabled={!canDuplicateMenu}
               >
                 <Copy size={18} />
               </button>

@@ -206,6 +206,7 @@ export const adminTranslations: Record<AdminLang, TranslationTree> = {
       importedItemsCount: 'Successfully imported {count} items',
       importingCategories: 'Importing categories...',
       importedCategoriesCount: 'Successfully imported {count} categories',
+      cannotDuplicateMenuPlanLimit: 'Your plan allows only a single menu. Upgrade to enable multiple menus.',
     },
     validation: {
       fillCategoryAndName: 'Please fill in Category and Name (English).',
