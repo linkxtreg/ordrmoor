@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Plus, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Menu } from '../types/menu';
 import { menusApi } from '../services/api';
@@ -15,6 +15,7 @@ interface MenusSidebarProps {
   onMenusChange: () => void;
   onCloseMenu?: () => void;
   canCreateMoreMenus: boolean;
+  requestCreateMenu?: number;
 }
 
 export const MenusSidebar = memo(function MenusSidebar({
@@ -24,6 +25,7 @@ export const MenusSidebar = memo(function MenusSidebar({
   onMenusChange,
   onCloseMenu,
   canCreateMoreMenus,
+  requestCreateMenu = 0,
 }: MenusSidebarProps) {
   const { t } = useAdminLanguage();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -31,6 +33,12 @@ export const MenusSidebar = memo(function MenusSidebar({
   const [menusExpanded, setMenusExpanded] = useState(true);
   const shouldCollapse = menus.length > MENUS_COLLAPSE_THRESHOLD;
   const displayMenus = shouldCollapse && !menusExpanded ? menus.slice(0, MENUS_COLLAPSE_THRESHOLD) : menus;
+
+  useEffect(() => {
+    if (requestCreateMenu > 0 && canCreateMoreMenus) {
+      setIsCreateOpen(true);
+    }
+  }, [requestCreateMenu, canCreateMoreMenus]);
 
   const handleCreateMenu = async () => {
     if (!newMenuName.trim()) {

@@ -112,6 +112,28 @@ export default function UniversalLoginPage() {
           <div className="bg-white border border-[#101010] rounded-[10px] shadow-[0_6px_0_0_#101010] p-8">
             <h2 className="text-xl font-semibold text-[#101010] mb-6">تسجيل الدخول</h2>
             <form onSubmit={handleSubmit} className="space-y-5">
+            <button
+              type="button"
+              className="w-full bg-white text-[#101010] py-3 rounded-lg font-medium border border-stone-300 hover:bg-stone-50 transition-colors flex items-center justify-center gap-3"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2 6.9 2.2 2.8 6.3 2.8 11.4S6.9 20.6 12 20.6c6.9 0 9.1-4.8 9.1-7.3 0-.5-.1-.9-.1-1.3H12Z" />
+                <path fill="#34A853" d="M2.8 11.4c0 1.6.4 3.1 1.2 4.4l3.3-2.6c-.2-.5-.3-1.1-.3-1.8s.1-1.2.3-1.8L4 7C3.2 8.3 2.8 9.8 2.8 11.4Z" />
+                <path fill="#FBBC05" d="M12 20.6c2.7 0 4.9-.9 6.5-2.5l-3.2-2.6c-.9.6-2 .9-3.3.9-2.5 0-4.6-1.7-5.4-4l-3.3 2.6c1.6 3.2 4.9 5.6 8.7 5.6Z" />
+                <path fill="#4285F4" d="M18.5 18.1c1.9-1.8 2.6-4.4 2.6-6.8 0-.5-.1-.9-.1-1.3H12v3.9h5.5c-.2 1.1-.9 2.7-2.2 3.6l3.2 2.6Z" />
+              </svg>
+              <span>أو سجل بـ Google</span>
+            </button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-stone-300" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white px-3 text-sm text-[#52525c]">أو</span>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-[#52525c] mb-2">
                 البريد الإلكتروني

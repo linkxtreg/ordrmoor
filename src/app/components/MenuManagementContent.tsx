@@ -84,6 +84,21 @@ export function MenuManagementContent({
   });
 
   const handleAddItem = async (newItem: MenuItem) => {
+    const categoryName = (newItem.category || '').trim();
+    if (!categories.some((c) => c.name === categoryName) && categoryName) {
+      const createdCategory = await categoriesApi.create(
+        addMenuId({
+          id: crypto.randomUUID(),
+          name: categoryName,
+          nameAr: categoryName,
+          color: '#6366f1',
+          description: '',
+          descriptionEn: '',
+          order: categories.length,
+        })
+      );
+      setCategories((prev) => [...prev, createdCategory]);
+    }
     const itemWithOrder = addMenuId({
       ...newItem,
       order: menuItems.length,

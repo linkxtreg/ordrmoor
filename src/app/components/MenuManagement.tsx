@@ -4,6 +4,7 @@ import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import { Logo } from './Logo';
 import { MenuItem, Category } from '../types/menu';
+import { getItemPriceRange } from '../lib/pricing';
 import { MenuItemForm } from './MenuItemForm';
 import { CategoryForm } from './CategoryForm';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
@@ -295,31 +296,15 @@ export const MenuManagement = memo(function MenuManagement({
   };
 
   const getPriceRange = (item: MenuItem) => {
-    if (item.pricing && typeof item.pricing === 'object' && !item.price) {
-      const prices: number[] = [];
-      Object.values(item.pricing).forEach(mealTypes => {
-        Object.values(mealTypes).forEach(price => {
-          if (typeof price === 'number') prices.push(price);
-        });
-      });
-      if (prices.length === 0) return 'N/A';
-      const min = Math.min(...prices);
-      const max = Math.max(...prices);
-      return min === max ? `${min} EGP` : `${min} - ${max} EGP`;
+    const { min, max } = getItemPriceRange(item);
+    if (min === 0 && max === 0) return 'N/A';
+    if (min === max) {
+      const hasDiscount = item.discountedPrice != null && item.discountedPrice > 0 && item.price != null;
+      const isSimpleItem = !item.priceVariants?.length && !item.optionGroups?.length;
+      if (hasDiscount && isSimpleItem) return `${item.price} → ${item.discountedPrice} EGP`;
+      return `${min} EGP`;
     }
-    const variants = item.priceVariants && item.priceVariants.length > 0 ? item.priceVariants : null;
-    if (variants) {
-      const prices = variants.map((v) => (v.discountedPrice != null && v.discountedPrice > 0 ? v.discountedPrice : v.price));
-      if (prices.length === 0) return 'N/A';
-      const min = Math.min(...prices);
-      const max = Math.max(...prices);
-      return min === max ? `${min} EGP` : `${min} - ${max} EGP`;
-    }
-    const effective = item.discountedPrice != null && item.discountedPrice > 0 ? item.discountedPrice : item.price ?? 0;
-    if (item.discountedPrice != null && item.discountedPrice > 0 && item.price != null) {
-      return `${item.price} → ${effective} EGP`;
-    }
-    return `${effective} EGP`;
+    return `${min} - ${max} EGP`;
   };
 
   return (
@@ -365,7 +350,7 @@ export const MenuManagement = memo(function MenuManagement({
             </button>
             <button
               onClick={handleAddClick}
-              className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 sm:px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-all font-medium shadow-sm hover:shadow"
+              className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 sm:px-5 py-2.5 rounded-lg hover:bg-emerald-700 transition-all font-medium shadow-sm hover:shadow"
             >
               <Plus size={18} />
               {t('items.addItem')}
@@ -458,8 +443,11 @@ export const MenuManagement = memo(function MenuManagement({
             <p className="text-lg font-medium text-gray-900">{t('categories.noCategoriesYet')}</p>
             <p className="text-sm mt-1 text-gray-500">{t('categories.createFirstCategory')}</p>
             <button
-              onClick={() => setCategoriesPageOpen(true)}
-              className="mt-6 inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+              onClick={() => {
+                setEditingCategory(null);
+                setCategoryFormOpen(true);
+              }}
+              className="mt-6 inline-flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-lg hover:bg-emerald-700 transition-colors font-medium"
             >
               <Plus size={18} />
               {t('categories.addFirstCategory')}

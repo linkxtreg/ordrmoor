@@ -1727,8 +1727,10 @@
                 <h1 class="hero-title">
                     <span class="highlight">زود مبيعاتك</span> من المنيو
                 </h1>
+                <p style="font-size: 14px; color: var(--gray-text); margin-bottom: 16px;">+50 مطعم وكافيه بيستخدموا OrdrMoor دلوقتي</p>
                 <p class="hero-subtitle">
-                    حول المنيو لسيستم ذكي، شيك، بيسهل التشغيل وبيزود قيمة الأوردر.                </p>
+                    حول المنيو بتاعك لرابط ذكي — يعرض، يبيع، ويجيب الزبون يرجع. من غير ديزاينر ومن غير تعقيد.
+                </p>
                 <a href="/signup" class="signup-cta hero-cta hero-main-cta" target="_top">سجل مطعمك دلوقتي</a>
             </div>
             <div class="hero-left">
@@ -1834,6 +1836,9 @@
                     <p class="card-text">الزبون بياكل ويمشي ومحدش عارف يوصله تاني عشان يرجع يطلب.</p>
                 </div>
             </div>
+            <div style="text-align: center; margin-top: 60px;">
+                <a href="#control" class="signup-cta hero-main-cta" style="display: inline-flex;">شوف ازاي بنحل ده</a>
+            </div>
         </div>
     </section>
 
@@ -1898,34 +1903,8 @@
                     <p class="card-text">السيستم بيحول بين العربي والإنجليزي بسلاسة عشان يناسب كل زباينك</p>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- QR Stands Section -->
-    <section id="qr-stands" class="qr-stands scroll-reveal">
-        <div class="qr-stands-header">
-            <h2 class="section-title">+ستاندات QR شيك</h2>
-            <p class="section-subtitle">شكل فخم يليق بترابيزة مطعمك</p>
-        </div>
-        <div class="qr-stands-cards stagger-cards">
-            <div class="stand-card">
-                <div class="stand-image">
-                    <img src="Images/acrylic Stand.png" alt="استاند أكريليك">
-                </div>
-                <div class="stand-info">
-                    <h3>استاند أكريليك</h3>
-                    <p>استاندات أكريليك مودرن، تستحمل وشكلها نظيف جداً</p>
-                </div>
-            </div>
-
-            <div class="stand-card">
-                <div class="stand-image">
-                    <img src="Images/Wood Stand.png" alt="استاند خشب">
-                </div>
-                <div class="stand-info">
-                    <h3>استاند خشب</h3>
-                    <p>خشب محفور ليزر، بيدي لمسة فخامة ودفء للمكان.</p>
-                </div>
+            <div style="text-align: center; margin-top: 48px;">
+                <a href="#pricing" style="font-size: 16px; font-weight: 600; color: var(--black); text-decoration: none; transition: opacity 0.2s;">شوف كل المميزات ←</a>
             </div>
         </div>
     </section>
@@ -2024,8 +2003,13 @@
         <div class="container">
             <h2 class="section-title">سعر بسيط.. وقيمة حقيقية</h2>
             <p class="section-subtitle" style="text-align: center; margin: 0 auto;">
-                اختار الخطة المناسبة لحجم مطعمك
+                جرب مجاناً لمدة 14 يوم — من غير كريدت كارد
             </p>
+
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; margin-bottom: 8px;">
+                <img src="https://cdn.jsdelivr.net/npm/heroicons@2.1.5/24/outline/shield-check.svg" alt="" style="width: 22px; height: 22px; opacity: 0.7;">
+                <span style="font-size: 14px; font-weight: 600; color: var(--gray-text);">ضمان استرداد كامل خلال 7 أيام</span>
+            </div>
 
             <div class="pricing-toggle-wrap">
                 <div class="pricing-toggle" id="pricingToggle" role="tablist">
@@ -2036,6 +2020,35 @@
 
             <div class="pricing-grid stagger-cards" id="pricingGrid">
                 <p id="pricingLoading" style="grid-column: 1 / -1; text-align: center; color: var(--gray-text);">جاري تحميل الباقات...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- QR Stands Section -->
+    <section id="qr-stands" class="qr-stands scroll-reveal">
+        <div class="qr-stands-header">
+            <h2 class="section-title">+ستاندات QR شيك</h2>
+            <p class="section-subtitle">شكل فخم يليق بترابيزة مطعمك</p>
+        </div>
+        <div class="qr-stands-cards stagger-cards">
+            <div class="stand-card">
+                <div class="stand-image">
+                    <img src="Images/acrylic Stand.png" alt="استاند أكريليك">
+                </div>
+                <div class="stand-info">
+                    <h3>استاند أكريليك</h3>
+                    <p>استاندات أكريليك مودرن، تستحمل وشكلها نظيف جداً</p>
+                </div>
+            </div>
+
+            <div class="stand-card">
+                <div class="stand-image">
+                    <img src="Images/Wood Stand.png" alt="استاند خشب">
+                </div>
+                <div class="stand-info">
+                    <h3>استاند خشب</h3>
+                    <p>خشب محفور ليزر، بيدي لمسة فخامة ودفء للمكان.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -2052,22 +2065,22 @@
                 <!-- Step 1 -->
                 <div class="step-card">
                     <div class="step-number">1</div>
-                    <h3 class="step-title">هات المنيو القديم</h3>
-                    <p class="step-text">كل اللي عليك تبعتلنا المنيو الـ PDF وصور الأكل بتاعتك.</p>
+                    <h3 class="step-title">سجل مطعمك في دقيقتين</h3>
+                    <p class="step-text">أنشئ حسابك وحط اسم مطعمك وبياناتك في ثواني.</p>
                 </div>
 
                 <!-- Step 2 -->
                 <div class="step-card">
                     <div class="step-number">2</div>
-                    <h3 class="step-title">إحنا نجهز كل حاجة</h3>
-                    <p class="step-text">هنصمم المنيو على السيستم ونطبعلك الستاندات ونوصلها.</p>
+                    <h3 class="step-title">حمل المنيو وصور الأكل</h3>
+                    <p class="step-text">ارفع الأصناف والصور والأسعار من الداشبورد بسهولة.</p>
                 </div>
 
                 <!-- Step 3 -->
                 <div class="step-card">
                     <div class="step-number">3</div>
-                    <h3 class="step-title">استلم واشتغل</h3>
-                    <p class="step-text">استلم الستاندات جاهزة وابدأ بيع خلال 48 ساعة.</p>
+                    <h3 class="step-title">استلم اللينك والـ QR وابدأ فوراً</h3>
+                    <p class="step-text">شارك لينك المنيو أو اطبع الـ QR وحطه على الترابيزات.</p>
                 </div>
             </div>
         </div>
@@ -2205,6 +2218,7 @@
                                     '<span class="period">/ سنوياً</span>' +
                                 '</div>' +
                                 '<div class="pricing-features">' + benefitsHtml + '</div>' +
+                                '<a href="/signup" class="signup-cta hero-main-cta" target="_top" style="display:block;text-align:center;margin-top:24px;">ابدأ دلوقتي</a>' +
                             '</div>';
                     }).join('');
                 }

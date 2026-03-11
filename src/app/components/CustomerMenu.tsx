@@ -8,6 +8,7 @@ import type { PublicLoyaltyProgram } from '../types/loyalty';
 import { LoyaltyBottomSheet } from './LoyaltyBottomSheet';
 import { trackMenuItemClick } from '../lib/analytics';
 import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
+import { hasTwoLayerMatrix, normalizePricingModel, getMatrixCellPrice } from '../lib/pricing';
 import { toast } from 'sonner';
 import svgPaths from '@/imports/svg-t21ykul132';
 
@@ -53,6 +54,8 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   /** Selected price variant id per item (when item has priceVariants). */
   const [selectedVariantByItemId, setSelectedVariantByItemId] = useState<Record<string, string>>({});
+  /** Selected row+column combination per item (when item has two-layer matrix). */
+  const [selectedMatrixByItemId, setSelectedMatrixByItemId] = useState<Record<string, { rowOptionId: string; columnOptionId: string }>>({});
   const [loyaltyProgram, setLoyaltyProgram] = useState<PublicLoyaltyProgram | null>(null);
   const [loyaltySheetOpen, setLoyaltySheetOpen] = useState(false);
   const [highlightTrackIndex, setHighlightTrackIndex] = useState(1); // 1 = first real slide when infinite
@@ -471,10 +474,16 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   const activeOfferByItemId = useMemo(() => {
     const map = new Map<string, OfferWithItems>();
     for (const item of menuItems) {
-      const defaultVariantId =
-        Array.isArray(item.priceVariants) && item.priceVariants.length > 0
-          ? item.priceVariants[0]?.id
-          : undefined;
+      let defaultVariantId: string | undefined;
+      if (hasTwoLayerMatrix(item) && item.optionGroups && item.pricingMatrix) {
+        const rowGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.rowGroupId);
+        const colGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.columnGroupId);
+        const rowId = rowGroup?.options?.[0]?.id;
+        const colId = colGroup?.options?.[0]?.id;
+        if (rowId && colId) defaultVariantId = `${rowId}::${colId}`;
+      } else if (Array.isArray(item.priceVariants) && item.priceVariants.length > 0) {
+        defaultVariantId = item.priceVariants[0]?.id;
+      }
       const offer = getActiveOfferForItem(item.id, defaultVariantId, offers);
       if (offer) map.set(item.id, offer);
     }
@@ -517,8 +526,41 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     setSelectedVariantByItemId((prev) => ({ ...prev, [itemId]: variantId }));
   };
 
+  const getSelectedMatrixCombination = (item: MenuItem) => {
+    if (!hasTwoLayerMatrix(item) || !item.optionGroups || !item.pricingMatrix) return null;
+    const rowGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.rowGroupId);
+    const colGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.columnGroupId);
+    if (!rowGroup || !colGroup || rowGroup.options.length === 0 || colGroup.options.length === 0) return null;
+    const sel = selectedMatrixByItemId[item.id];
+    const rowOpt = rowGroup.options.find((o) => o.id === sel?.rowOptionId) ?? rowGroup.options[0];
+    const colOpt = colGroup.options.find((o) => o.id === sel?.columnOptionId) ?? colGroup.options[0];
+    return { rowOptionId: rowOpt.id, columnOptionId: colOpt.id };
+  };
+  const setSelectedMatrix = (itemId: string, rowOptionId: string, columnOptionId: string) => {
+    setSelectedMatrixByItemId((prev) => ({ ...prev, [itemId]: { rowOptionId, columnOptionId } }));
+  };
+
+  const getOptionName = (o: { name?: string; nameEn?: string; nameAr?: string }) =>
+    language === 'en' ? (o.nameEn || o.name || '') : (o.nameAr || o.name || '');
+
   const getVariantName = (v: { name?: string; nameEn?: string; nameAr?: string }) =>
     language === 'en' ? (v.nameEn || v.name || '') : (v.nameAr || v.name || '');
+
+  const getItemBasePrice = (item: MenuItem): number => {
+    if (hasTwoLayerMatrix(item)) {
+      const combo = getSelectedMatrixCombination(item);
+      if (combo) {
+        const p = getMatrixCellPrice(item, combo.rowOptionId, combo.columnOptionId);
+        if (p != null) return p;
+      }
+      const model = normalizePricingModel(item);
+      if (model.kind === 'matrix' && model.pricingMatrix.cells.length > 0) {
+        return Math.min(...model.pricingMatrix.cells.map((c) => c.price));
+      }
+    }
+    const variant = getSelectedVariant(item);
+    return variant ? (variant.discountedPrice != null && variant.discountedPrice > 0 ? variant.discountedPrice : variant.price) : item.price ?? 0;
+  };
 
   const handleMenuItemClick = (item: MenuItem) => {
     trackMenuItemClick({
@@ -841,10 +883,17 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
             <div className="flex gap-3 w-max p-5 pt-0">
               {featuredOfferItems.map((item) => {
                 const offer = activeOfferByItemId.get(item.id) ?? null;
-                const basePrice =
-                  Array.isArray(item.priceVariants) && item.priceVariants.length > 0
+                const basePrice = hasTwoLayerMatrix(item)
+                  ? (() => {
+                      const model = normalizePricingModel(item);
+                      if (model.kind === 'matrix' && model.pricingMatrix.cells.length > 0) {
+                        return Math.min(...model.pricingMatrix.cells.map((c) => c.price));
+                      }
+                      return item.price ?? 0;
+                    })()
+                  : (Array.isArray(item.priceVariants) && item.priceVariants.length > 0
                     ? item.priceVariants[0].price
-                    : item.price ?? 0;
+                    : item.price ?? 0);
                 const discounted = getDiscountedPrice(basePrice, offer);
                 return (
                   <div
@@ -899,8 +948,13 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
               className="scroll-mt-[100px]"
             >
               {categoryItems.map((item) => {
+                const isMatrix = hasTwoLayerMatrix(item);
                 const selectedVariant = getSelectedVariant(item);
-                const activeOffer = getActiveOfferForItem(item.id, selectedVariant?.id, offers);
+                const selectedMatrix = getSelectedMatrixCombination(item);
+                const variantIdForOffer = isMatrix && selectedMatrix
+                  ? `${selectedMatrix.rowOptionId}::${selectedMatrix.columnOptionId}`
+                  : selectedVariant?.id;
+                const activeOffer = getActiveOfferForItem(item.id, variantIdForOffer, offers);
                 return (
                   <div
                     key={item.id}
@@ -961,8 +1015,70 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                       {getItemDescription(item)}
                     </p>
 
-                    {/* Pricing matrix: variant pills when multiple options */}
-                    {item.priceVariants && item.priceVariants.length > 1 && (
+                    {/* Two-layer matrix: row group then column group */}
+                    {isMatrix && item.optionGroups && item.pricingMatrix && item.optionGroups.length >= 2 && (() => {
+                      const rowGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.rowGroupId);
+                      const colGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.columnGroupId);
+                      if (!rowGroup || !colGroup) return null;
+                      const rowOpts = rowGroup.options || [];
+                      const colOpts = colGroup.options || [];
+                      const sel = selectedMatrix;
+                      return (
+                        <div className="space-y-2 mt-2">
+                          <div>
+                            <div className="flex flex-wrap gap-2">
+                              {rowOpts.map((o) => {
+                                const isSelected = sel?.rowOptionId === o.id;
+                                return (
+                                  <button
+                                    key={o.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const colId = sel?.columnOptionId ?? colOpts[0]?.id ?? '';
+                                      setSelectedMatrix(item.id, o.id, colId);
+                                    }}
+                                    className={`px-4 py-2 rounded-full font-bold text-xs uppercase whitespace-nowrap transition-all border ${
+                                      isSelected ? 'text-white border-transparent shadow-md' : 'bg-[#f4f4f5] text-[#3f3f46] border-gray-200'
+                                    }`}
+                                    style={isSelected ? { backgroundColor: brandColor, borderColor: brandColor } : undefined}
+                                  >
+                                    {getOptionName(o)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex flex-wrap gap-2">
+                              {colOpts.map((o) => {
+                                const isSelected = sel?.columnOptionId === o.id;
+                                return (
+                                  <button
+                                    key={o.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const rowId = sel?.rowOptionId ?? rowOpts[0]?.id ?? '';
+                                      setSelectedMatrix(item.id, rowId, o.id);
+                                    }}
+                                    className={`px-4 py-2 rounded-full font-bold text-xs uppercase whitespace-nowrap transition-all border ${
+                                      isSelected ? 'text-white border-transparent shadow-md' : 'bg-[#f4f4f5] text-[#3f3f46] border-gray-200'
+                                    }`}
+                                    style={isSelected ? { backgroundColor: brandColor, borderColor: brandColor } : undefined}
+                                  >
+                                    {getOptionName(o)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Flat variants: single row of pills */}
+                    {!isMatrix && item.priceVariants && item.priceVariants.length > 1 && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {item.priceVariants.map((v) => {
                           const isSelected = selectedVariant?.id === v.id;
@@ -989,8 +1105,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                     {/* Price with active offer support */}
                     <div className="mt-2 mb-2 flex flex-wrap items-baseline gap-1.5">
                       {(() => {
-                        const variant = getSelectedVariant(item);
-                        const basePrice = variant ? variant.price : item.price ?? 0;
+                        const basePrice = getItemBasePrice(item);
                         const discountedPrice = getDiscountedPrice(basePrice, activeOffer);
                         if (!activeOffer) {
                           return (

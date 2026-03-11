@@ -1,13 +1,17 @@
 import { useState, useRef } from 'react';
 import { FileSpreadsheet, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { MenuItem, Category } from '../types/menu';
-import type { PriceVariant } from '../types/menu';
+import type { OptionGroup, MatrixOption, PricingMatrix, PricingMatrixCell } from '../types/menu';
+import { normalizePricingModel } from '../lib/pricing';
 import { toast } from 'sonner';
 import { useAdminLanguage } from '../context/AdminLanguageContext';
 
-// Template CSV: exact columns users must fill. Multiple options separated by comma. Optional "id" for updating existing items.
-const IMPORT_TEMPLATE_CSV = `category_name_en,category_name_ar,name_en,name_ar,options_names_en,options_names_ar,option_prices,is_popular,description_en,description_ar,id
-Main Course,اطباق رئيسية,White Sauce Pasta,مكرونة وايت صوص,"Large,Medium,Small","كبير،وسط، صغير","100,75,50",yes,White sauce pasta,باستا وايت صوص,`;
+// Template CSV: exact columns users must fill. Optional "id" for updating existing items.
+// Simple item: pricing_mode=flat, matrix_prices=single value (e.g. 50)
+// Matrix item: pricing_mode=matrix, fill row_options_*, col_options_*, matrix_prices (row-major)
+const IMPORT_TEMPLATE_CSV = `category_name_en,category_name_ar,name_en,name_ar,pricing_mode,row_options_en,row_options_ar,col_options_en,col_options_ar,matrix_prices,is_popular,description_en,description_ar,id
+Main Course,اطباق رئيسية,White Sauce Pasta,مكرونة وايت صوص,flat,,,,,50,yes,White sauce pasta,باستا وايت صوص,
+Main Course,اطباق رئيسية,Burger Original,برجر أوريجينال,matrix,"Single,Double","فردي،دبل","Sandwich,+Fries,Combo","ساندويتش،بطاطس،كومبو","155,185,210,185,215,240",yes,Burger with options,برجر بخيارات,`;
 
 interface SheetImporterProps {
   existingItems: MenuItem[];
@@ -73,7 +77,7 @@ function csvEscape(value: string): string {
   return s;
 }
 
-const EXPORT_CSV_HEADERS = 'category_name_en,category_name_ar,name_en,name_ar,options_names_en,options_names_ar,option_prices,is_popular,description_en,description_ar,id';
+const EXPORT_CSV_HEADERS = 'category_name_en,category_name_ar,name_en,name_ar,pricing_mode,row_options_en,row_options_ar,col_options_en,col_options_ar,matrix_prices,is_popular,description_en,description_ar,id';
 
 export function SheetImporter({ existingItems, categories, onImportItems, onImportCategories, onClose }: SheetImporterProps) {
   const { t, dir } = useAdminLanguage();
@@ -102,11 +106,51 @@ export function SheetImporter({ existingItems, categories, onImportItems, onImpo
         const catAr = categoryAr.get(item.category) ?? '';
         const nameEn = item.nameEn ?? item.name ?? '';
         const nameAr = item.nameAr ?? '';
-        const optionsEn = item.priceVariants?.map((v) => v.nameEn ?? v.name ?? '').join(',') ?? '';
-        const optionsAr = item.priceVariants?.map((v) => v.nameAr ?? '').join(',') ?? '';
-        const prices = item.priceVariants?.length
-          ? item.priceVariants.map((v) => String(v.price)).join(',')
-          : String(item.price ?? '');
+        let pricingMode = 'flat';
+        let rowOptsEn = '';
+        let rowOptsAr = '';
+        let colOptsEn = '';
+        let colOptsAr = '';
+        let matrixPrices = '';
+
+        const model = normalizePricingModel(item);
+        if (model.kind === 'matrix') {
+          pricingMode = 'matrix';
+          const { optionGroups, pricingMatrix } = model;
+          const rowGroup = optionGroups.find((g) => g.id === pricingMatrix.rowGroupId);
+          const colGroup = optionGroups.find((g) => g.id === pricingMatrix.columnGroupId);
+          const rowOpts = rowGroup?.options ?? [];
+          const colOpts = colGroup?.options ?? [];
+          rowOptsEn = rowOpts.map((o) => o.nameEn ?? o.name ?? '').join(',');
+          rowOptsAr = rowOpts.map((o) => o.nameAr ?? '').join(',');
+          colOptsEn = colOpts.map((o) => o.nameEn ?? o.name ?? '').join(',');
+          colOptsAr = colOpts.map((o) => o.nameAr ?? '').join(',');
+          const cells = pricingMatrix.cells ?? [];
+          const rowMajor: number[] = [];
+          for (const ro of rowOpts) {
+            for (const co of colOpts) {
+              const c = cells.find((x) => x.rowOptionId === ro.id && x.columnOptionId === co.id);
+              const price = c?.discountedPrice != null && c.discountedPrice > 0 ? c.discountedPrice : (c?.price ?? 0);
+              rowMajor.push(price);
+            }
+          }
+          matrixPrices = rowMajor.map(String).join(',');
+        } else if (model.variants.length > 1) {
+          // Flat variants with multiple options: export as 1×N matrix to preserve all prices
+          pricingMode = 'matrix';
+          rowOptsEn = 'Default';
+          rowOptsAr = 'افتراضي';
+          colOptsEn = model.variants.map((v) => v.nameEn ?? v.name ?? '').join(',');
+          colOptsAr = model.variants.map((v) => v.nameAr ?? '').join(',');
+          matrixPrices = model.variants
+            .map((v) => (v.discountedPrice != null && v.discountedPrice > 0 ? v.discountedPrice : v.price))
+            .map(String)
+            .join(',');
+        } else {
+          const p = model.variants[0];
+          matrixPrices = String(p ? (p.discountedPrice != null && p.discountedPrice > 0 ? p.discountedPrice : p.price) : (item.price ?? ''));
+        }
+
         const popular = item.isPopular ? 'yes' : 'no';
         const descEn = item.descriptionEn ?? item.description ?? '';
         const descAr = item.descriptionAr ?? '';
@@ -116,9 +160,12 @@ export function SheetImporter({ existingItems, categories, onImportItems, onImpo
           csvEscape(catAr),
           csvEscape(nameEn),
           csvEscape(nameAr),
-          csvEscape(optionsEn),
-          csvEscape(optionsAr),
-          csvEscape(prices),
+          csvEscape(pricingMode),
+          csvEscape(rowOptsEn),
+          csvEscape(rowOptsAr),
+          csvEscape(colOptsEn),
+          csvEscape(colOptsAr),
+          csvEscape(matrixPrices),
           csvEscape(popular),
           csvEscape(descEn),
           csvEscape(descAr),
@@ -188,25 +235,62 @@ export function SheetImporter({ existingItems, categories, onImportItems, onImpo
                 continue;
               }
 
-              const optionsNamesEn = splitOptions(row['options_names_en']);
-              const optionsNamesAr = splitOptions(row['options_names_ar']);
-              const optionPrices = splitPrices(row['option_prices']);
+              const pricingModeRaw = String(row['pricing_mode'] ?? 'flat').trim().toLowerCase();
+              const useMatrix = pricingModeRaw === 'matrix';
 
-              let priceVariants: PriceVariant[] | undefined;
-              if (optionsNamesEn.length > 0 || optionsNamesAr.length > 0 || optionPrices.length > 0) {
-                const maxLen = Math.max(optionsNamesEn.length, optionsNamesAr.length, optionPrices.length);
-                priceVariants = Array.from({ length: maxLen }, (_, i) => ({
-                  id: crypto.randomUUID(),
-                  name: optionsNamesEn[i] || optionsNamesAr[i] || `Option ${i + 1}`,
-                  nameEn: optionsNamesEn[i] || undefined,
-                  nameAr: optionsNamesAr[i] || undefined,
-                  price: optionPrices[i] ?? 0,
-                }));
+              const rowOptsEn = splitOptions(row['row_options_en']);
+              const rowOptsAr = splitOptions(row['row_options_ar']);
+              const colOptsEn = splitOptions(row['col_options_en']);
+              const colOptsAr = splitOptions(row['col_options_ar']);
+              const matrixPricesRaw = splitPrices(row['matrix_prices']);
+
+              let optionGroups: OptionGroup[] | undefined;
+              let pricingMatrix: PricingMatrix | undefined;
+              let price = 0;
+
+              if (useMatrix && (rowOptsEn.length > 0 || rowOptsAr.length > 0) && (colOptsEn.length > 0 || colOptsAr.length > 0) && matrixPricesRaw.length > 0) {
+                const rowGroupId = 'rg-' + crypto.randomUUID().slice(0, 8);
+                const colGroupId = 'cg-' + crypto.randomUUID().slice(0, 8);
+                const rowOptions: MatrixOption[] = Array.from(
+                  { length: Math.max(rowOptsEn.length, rowOptsAr.length) },
+                  (_, i) => ({
+                    id: 'ro-' + crypto.randomUUID().slice(0, 8),
+                    nameEn: rowOptsEn[i] || undefined,
+                    nameAr: rowOptsAr[i] || undefined,
+                    name: rowOptsEn[i] || rowOptsAr[i] || `Row ${i + 1}`,
+                  })
+                );
+                const colOptions: MatrixOption[] = Array.from(
+                  { length: Math.max(colOptsEn.length, colOptsAr.length) },
+                  (_, i) => ({
+                    id: 'co-' + crypto.randomUUID().slice(0, 8),
+                    nameEn: colOptsEn[i] || undefined,
+                    nameAr: colOptsAr[i] || undefined,
+                    name: colOptsEn[i] || colOptsAr[i] || `Col ${i + 1}`,
+                  })
+                );
+                const cells: PricingMatrixCell[] = [];
+                let pi = 0;
+                for (const ro of rowOptions) {
+                  for (const co of colOptions) {
+                    cells.push({
+                      rowOptionId: ro.id,
+                      columnOptionId: co.id,
+                      price: matrixPricesRaw[pi] ?? 0,
+                    });
+                    pi++;
+                  }
+                }
+                optionGroups = [
+                  { id: rowGroupId, labelEn: 'Row', labelAr: 'الصف', label: 'Row', options: rowOptions },
+                  { id: colGroupId, labelEn: 'Column', labelAr: 'العمود', label: 'Column', options: colOptions },
+                ];
+                pricingMatrix = { rowGroupId, columnGroupId: colGroupId, cells };
+                const cellPrices = cells.map((c) => c.price).filter((p) => p > 0);
+                price = cellPrices.length > 0 ? Math.min(...cellPrices) : (cells[0]?.price ?? 0);
+              } else {
+                price = matrixPricesRaw.length > 0 ? (matrixPricesRaw[0] ?? 0) : 0;
               }
-
-              const price = priceVariants?.length
-                ? (priceVariants[0]?.price ?? 0)
-                : 0;
 
               const isPopularRaw = String(row['is_popular'] ?? '').trim().toLowerCase();
               const isPopular = isPopularRaw === 'yes' || isPopularRaw === 'true' || isPopularRaw === '1';
@@ -227,7 +311,8 @@ export function SheetImporter({ existingItems, categories, onImportItems, onImpo
                 descriptionEn: descriptionEn || undefined,
                 descriptionAr: descriptionAr || undefined,
                 price,
-                priceVariants,
+                optionGroups,
+                pricingMatrix,
                 image: '',
                 isAvailable: true,
                 isPopular,

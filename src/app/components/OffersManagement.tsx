@@ -6,6 +6,7 @@ import { useAdminLanguage } from '@/app/context/AdminLanguageContext';
 import type { Category, MenuItem } from '@/app/types/menu';
 import type { OfferUpsertInput, OfferWithItems } from '@/app/types/offers';
 import { isOfferActive } from '@/app/lib/offers';
+import { hasTwoLayerMatrix, getMatrixCellPrice } from '@/app/lib/pricing';
 
 type OfferFormState = {
   name: string;
@@ -263,7 +264,31 @@ export function OffersManagement() {
       const itemNameEn = getItemNameEn(item);
       const itemNameAr = getItemNameAr(item);
 
-      if (Array.isArray(item.priceVariants) && item.priceVariants.length > 0) {
+      if (hasTwoLayerMatrix(item) && item.optionGroups && item.pricingMatrix) {
+        const rowGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.rowGroupId);
+        const colGroup = item.optionGroups.find((g) => g.id === item.pricingMatrix!.columnGroupId);
+        const rowOpts = rowGroup?.options ?? [];
+        const colOpts = colGroup?.options ?? [];
+        for (const ro of rowOpts) {
+          for (const co of colOpts) {
+            const price = getMatrixCellPrice(item, ro.id, co.id) ?? 0;
+            const rowLabel = ro.nameEn || ro.name || ro.nameAr || '';
+            const colLabel = co.nameEn || co.name || co.nameAr || '';
+            const comboLabel = rowLabel && colLabel ? `${rowLabel} × ${colLabel}` : rowLabel || colLabel || '-';
+            rows.push({
+              targetId: `${item.id}::${ro.id}::${co.id}`,
+              menuItemId: item.id,
+              categoryKey,
+              categoryLabel,
+              itemNameEn,
+              itemNameAr,
+              variantNameEn: comboLabel,
+              variantNameAr: comboLabel,
+              price,
+            });
+          }
+        }
+      } else if (Array.isArray(item.priceVariants) && item.priceVariants.length > 0) {
         for (const variant of item.priceVariants) {
           rows.push({
             targetId: `${item.id}::${variant.id}`,

@@ -1,8 +1,14 @@
 import type { OfferWithItems } from '../types/offers';
 
-function parseTargetId(targetId: string): { itemId: string; variantId?: string } {
-  const [itemId, variantId] = targetId.split('::');
-  return { itemId, variantId: variantId || undefined };
+/** Parse targetId: "itemId", "itemId::variantId", or "itemId::rowOptionId::columnOptionId" (matrix). */
+function parseTargetId(targetId: string): { itemId: string; variantId?: string; rowOptionId?: string; columnOptionId?: string } {
+  const parts = targetId.split('::');
+  const itemId = parts[0] ?? '';
+  if (parts.length === 1) return { itemId };
+  if (parts.length >= 3) {
+    return { itemId, variantId: `${parts[1]}::${parts[2]}`, rowOptionId: parts[1], columnOptionId: parts[2] };
+  }
+  return { itemId, variantId: parts[1] || undefined };
 }
 
 function parseDateBoundary(value?: string | null, endOfDay = false): Date | null {

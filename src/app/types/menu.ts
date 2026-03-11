@@ -17,6 +17,43 @@ export interface PriceVariant {
   discountedPrice?: number;
 }
 
+/** Single option in an option group (e.g. "Single", "Double" or "Sandwich", "+Fries", "Combo"). */
+export interface MatrixOption {
+  id: string;
+  nameEn?: string;
+  nameAr?: string;
+  /** Fallback when localized names are missing. */
+  name?: string;
+}
+
+/** One layer of options (e.g. burger count or addon type). */
+export interface OptionGroup {
+  id: string;
+  labelEn?: string;
+  labelAr?: string;
+  /** Fallback label. */
+  label?: string;
+  options: MatrixOption[];
+}
+
+/** A single cell in the two-layer pricing matrix. */
+export interface PricingMatrixCell {
+  rowOptionId: string;
+  columnOptionId: string;
+  price: number;
+  discountedPrice?: number;
+}
+
+/** Two-layer pricing matrix: row group × column group → price per combination. */
+export interface PricingMatrix {
+  rowGroupId: string;
+  columnGroupId: string;
+  cells: PricingMatrixCell[];
+}
+
+/** Legacy nested pricing shape: variation -> mealType -> price (e.g. pricing["Single"]["Sandwich"] = 155). */
+export type LegacyPricing = Record<string, Record<string, number>>;
+
 export interface MenuItem {
   id: string;
   /** Primary/fallback name (often same as nameEn). Used when localized name is missing. */
@@ -30,6 +67,12 @@ export interface MenuItem {
   discountedPrice?: number;
   /** Pricing matrix: multiple named variants (e.g. Sandwich 155, Combo 185). When set, replaces single price on menu. */
   priceVariants?: PriceVariant[];
+  /** Two-layer pricing: option groups (e.g. burger count, addon) and per-combination prices. When set, replaces priceVariants. */
+  optionGroups?: OptionGroup[];
+  /** Per-combination prices for two-layer matrix. Requires optionGroups. */
+  pricingMatrix?: PricingMatrix;
+  /** Legacy nested pricing: variation -> mealType -> price. Kept for read compatibility. */
+  pricing?: LegacyPricing;
   image: string;
   isAvailable: boolean;
   isPopular: boolean;

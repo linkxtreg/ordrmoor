@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Coins, MapPin, Tag, Settings } from 'lucide-react';
+import { Coins, MapPin, Tag, Settings, X } from 'lucide-react';
 import { AdminLayout } from '@/app/components/AdminLayout';
 import { MenusSidebar } from '@/app/components/MenusSidebar';
 import { MenuManagementContent } from '@/app/components/MenuManagementContent';
@@ -22,7 +22,7 @@ interface AdminPageProps {
 }
 
 export default function AdminPage({ onLogout }: AdminPageProps) {
-  const { tenantName, tenantSlug } = useTenant();
+  const { tenantName, tenantSlug, basePath } = useTenant();
   const { t } = useAdminLanguage();
   const { isEnabled } = useFeatureFlags();
   const [menus, setMenus] = useState<Menu[]>([]);
@@ -31,6 +31,8 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
   const [activeSection, setActiveSection] = useState('general');
   const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(true);
+  const [requestCreateMenu, setRequestCreateMenu] = useState(0);
 
   useEffect(() => {
     if (!tenantSlug) return;
@@ -117,7 +119,16 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
   const isAddressesEnabled = isEnabled('addresses');
   const isOffersEnabled = isEnabled('offers');
   const isLoyaltyEnabled = isEnabled('loyalty');
-   const canHaveMultipleMenus = isEnabled('multiMenus');
+  const canHaveMultipleMenus = isEnabled('multiMenus');
+  const hasCompletedGeneralInfo = useMemo(() => {
+    if (!generalInfo) return false;
+    return Boolean(
+      generalInfo.tagline?.trim() &&
+      generalInfo.phoneNumber?.trim() &&
+      generalInfo.logoImage?.trim()
+    );
+  }, [generalInfo]);
+  const customerMenuUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${basePath}/menu`;
 
   const extraNavItems = useMemo(
     () => [
@@ -193,10 +204,74 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
             onMenusChange={loadAllData}
             onCloseMenu={onCloseMenu}
             canCreateMoreMenus={canHaveMultipleMenus || menus.length === 0}
+            requestCreateMenu={requestCreateMenu}
           />
         )}
         extraNavItems={extraNavItems}
       >
+        {menus.length === 0 && showOnboardingBanner && (
+          <div className="mb-6 w-full rounded-2xl bg-[#7ccf2d] text-white px-6 py-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold">أهلاً! خلينا نبدأ 🎉</h2>
+                <p className="mt-1 text-sm text-white/90">3 خطوات بس وهتبقى جاهز تستقبل زباين</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOnboardingBanner(false)}
+                className="shrink-0 rounded-lg p-2 text-white/90 hover:bg-white/10 hover:text-white transition-colors"
+                aria-label="Dismiss onboarding"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              <div className="rounded-xl bg-white/12 border border-white/15 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">1. أضف بيانات مطعمك</span>
+                  <span className="text-lg">{hasCompletedGeneralInfo ? '✅' : '○'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('general')}
+                  className="mt-3 text-sm font-medium text-white underline underline-offset-4"
+                >
+                  افتح General Info
+                </button>
+              </div>
+
+              <div className="rounded-xl bg-white/12 border border-white/15 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">2. أنشئ أول منيو</span>
+                  <span className="text-lg">○</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRequestCreateMenu((n) => n + 1)}
+                  className="mt-3 text-sm font-medium text-white underline underline-offset-4"
+                >
+                  افتح إنشاء منيو
+                </button>
+              </div>
+
+              <div className="rounded-xl bg-white/12 border border-white/15 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">3. شارك الرابط مع زباينك</span>
+                  <span className="text-lg">○</span>
+                </div>
+                <a
+                  href={customerMenuUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block text-sm font-medium text-white underline underline-offset-4"
+                >
+                  افتح رابط المنيو
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
         {activeSection === 'general' && (
           <GeneralInfoManagement
             generalInfo={generalInfo}
