@@ -102,6 +102,9 @@ export const adminTranslations: Record<AdminLang, TranslationTree> = {
     },
     generalInfo: {
       header: "Update your {name}'s contact and branding details",
+      restaurantName: 'Restaurant Name',
+      restaurantNamePlaceholder: 'e.g., Burger Republic',
+      restaurantNameHint: 'Shown in the menu header, admin panel, and share links',
       images: 'Images',
       backgroundImage: 'Background Image',
       backgroundImageHint: 'This image appears at the top of your profile (recommended: 800x600px)',
@@ -469,6 +472,9 @@ export const adminTranslations: Record<AdminLang, TranslationTree> = {
     },
     generalInfo: {
       header: 'تحديث بيانات ومعلومات {name} للتواصل والهوية',
+      restaurantName: 'اسم المطعم',
+      restaurantNamePlaceholder: 'مثال: برجر ريبابلك',
+      restaurantNameHint: 'يظهر في رأس القائمة ولوحة التحكم وروابط المشاركة',
       images: 'الصور',
       backgroundImage: 'صورة الخلفية',
       backgroundImageHint: 'تظهر في أعلى الصفحة (مفضل: 800x600 بكسل)',

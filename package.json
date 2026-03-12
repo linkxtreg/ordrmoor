@@ -7,6 +7,8 @@
     "build": "vite build",
     "build:analyze": "ANALYZE=1 vite build",
     "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "deploy:functions": "supabase functions deploy make-server-47a828b2"
   },
   "dependencies": {
@@ -70,12 +72,16 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@tailwindcss/vite": "4.1.12",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "^28.1.0",
     "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "react": "18.3.1",

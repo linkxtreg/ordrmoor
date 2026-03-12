@@ -187,6 +187,7 @@ export const initialMenuItems: MenuItem[] = [
 ];
 
 export const initialGeneralInfo: GeneralInfo = {
+  restaurantName: "",
   phoneNumber: "15879",
   tagline: "Your Burger Destination",
   backgroundImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=600&fit=crop",

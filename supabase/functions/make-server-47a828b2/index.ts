@@ -54,7 +54,7 @@ async function withRetry<T>(
 }
 
 app.use('*', logger(console.log));
-app.use("/*", cors({ origin: "*", allowHeaders: ["Content-Type", "Authorization", "X-Tenant-Id", "X-Super-Admin-Token"], allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], exposeHeaders: ["Content-Length"], maxAge: 600 }));
+app.use("/*", cors({ origin: "*", allowHeaders: ["Content-Type", "Authorization", "X-Tenant-Id", "X-Super-Admin-Token", "X-User-Token"], allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], exposeHeaders: ["Content-Length"], maxAge: 600 }));
 
 async function initializeStorage() {
   const bucketName = 'make-47a828b2-menu-images';
@@ -449,33 +449,27 @@ app.get("/make-server-47a828b2/tenants/check/:slug", async (c) => {
   }
 });
 
-// Public: Get tenant info (name, slug) for active tenants only
-app.get("/tenants/info/:slug", async (c) => {
+// Public: Get tenant info (name, slug) for active tenants only. Prefer restaurantName from general-info when set (source of truth).
+async function getTenantInfoResponse(c: any) {
+  const slug = c.req.param("slug");
+  if (!slug) return c.json({ exists: false }, 404);
+  const tenants = await getTenantsList();
+  const tenant = tenants.find((t) => t.slug === slug);
+  const exists = tenant && tenant.active !== false;
+  if (!exists) return c.json({ exists: false }, 404);
+  let displayName = tenant.name || tenant.slug;
   try {
-    const slug = c.req.param("slug");
-    if (!slug) return c.json({ exists: false }, 404);
-    const tenants = await getTenantsList();
-    const tenant = tenants.find((t) => t.slug === slug);
-    const exists = tenant && tenant.active !== false;
-    if (!exists) return c.json({ exists: false }, 404);
-    return c.json({ exists: true, name: tenant.name || tenant.slug, slug: tenant.slug });
+    const tkv = tenantKv(slug);
+    const gi = (await tkv.get("general-info")) as { restaurantName?: string } | null;
+    const rn = (gi?.restaurantName ?? "").toString().trim();
+    if (rn.length >= 2) displayName = rn;
   } catch {
-    return c.json({ exists: false }, 404);
+    /* ignore */
   }
-});
-app.get("/make-server-47a828b2/tenants/info/:slug", async (c) => {
-  try {
-    const slug = c.req.param("slug");
-    if (!slug) return c.json({ exists: false }, 404);
-    const tenants = await getTenantsList();
-    const tenant = tenants.find((t) => t.slug === slug);
-    const exists = tenant && tenant.active !== false;
-    if (!exists) return c.json({ exists: false }, 404);
-    return c.json({ exists: true, name: tenant.name || tenant.slug, slug: tenant.slug });
-  } catch {
-    return c.json({ exists: false }, 404);
-  }
-});
+  return c.json({ exists: true, name: displayName, slug: tenant.slug });
+}
+app.get("/tenants/info/:slug", getTenantInfoResponse);
+app.get("/make-server-47a828b2/tenants/info/:slug", getTenantInfoResponse);
 
 // Public: List active plans (for tenant admin Settings)
 app.get("/plans", async (c) => {
@@ -565,6 +559,10 @@ async function tenantSignup(c: any) {
       return c.json({ success: false, error: "Password must be at least 6 characters" }, 400);
     }
     const tenants = await getTenantsList();
+    const existingByEmail = tenants.find((t) => t.adminEmail?.toLowerCase() === adminEmail.toLowerCase());
+    if (existingByEmail) {
+      return c.json({ success: true, data: { slug: existingByEmail.slug, name: existingByEmail.name ?? existingByEmail.slug, adminEmail: existingByEmail.adminEmail ?? adminEmail }, existingAccount: true });
+    }
     const existingSlugs = new Set(tenants.map((t) => t.slug));
     let finalSlug = slug;
     let n = 1;
@@ -599,8 +597,144 @@ async function tenantSignup(c: any) {
     return c.json({ success: false, error: String(error) }, 500);
   }
 }
-app.post("/tenants/signup", tenantSignup);
-app.post("/make-server-47a828b2/tenants/signup", tenantSignup);
+// Route /tenants/signup: if X-User-Token present (Google OAuth), use Google handler; else use email/password signup
+app.post("/tenants/signup", async (c) => {
+  if (c.req.header("X-User-Token")) return tenantSignupGoogle(c);
+  return tenantSignup(c);
+});
+app.post("/make-server-47a828b2/tenants/signup", async (c) => {
+  if (c.req.header("X-User-Token")) return tenantSignupGoogle(c);
+  return tenantSignup(c);
+});
+
+// UUID v4 format: 8-4-4-4-12 hex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUuid(s: string): boolean {
+  return typeof s === "string" && UUID_REGEX.test(s);
+}
+
+// Decode JWT payload to get sub (user id). Service role trusts the token.
+function getSubFromJwt(jwt: string): string | null {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(b64));
+    const sub = payload.sub ?? null;
+    return sub && typeof sub === "string" ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
+// Signup for users who authenticated via Google OAuth. User JWT in X-User-Token (anon key in Authorization for gateway).
+async function tenantSignupGoogle(c: any) {
+  try {
+    const token = c.req.header("X-User-Token");
+    if (!token) {
+      return c.json({ success: false, error: "X-User-Token required (user access token)" }, 401);
+    }
+    const userId = getSubFromJwt(token);
+    if (!userId || typeof userId !== "string") {
+      return c.json({ success: false, error: "Invalid or expired token" }, 401);
+    }
+    const userIdNorm = userId.trim().toLowerCase();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(userIdNorm)) {
+      return c.json({ success: false, error: "Invalid or expired token" }, 401);
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const authUrl = supabaseUrl.replace(/\/$/, "") + "/auth/v1";
+    const userRes = await fetch(`${authUrl}/admin/users/${userIdNorm}`, {
+      headers: { "Authorization": `Bearer ${serviceKey}`, "apikey": serviceKey },
+    });
+    if (!userRes.ok) {
+      const errText = await userRes.text();
+      console.error("getUserById failed:", userRes.status, errText);
+      return c.json({ success: false, error: "Invalid or expired token" }, 401);
+    }
+    const userJson = await userRes.json();
+    const user = userJson as { id?: string; email?: string; user_metadata?: Record<string, unknown>; identities?: unknown[] };
+    if (!user) {
+      return c.json({ success: false, error: "User not found" }, 401);
+    }
+    const existingSlug = user.user_metadata?.tenant_slug;
+    if (existingSlug) {
+      return c.json({ success: true, data: { slug: existingSlug, name: existingSlug, adminEmail: user.email } });
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = (await c.req.json()) as Record<string, unknown>;
+    } catch {
+      return c.json({ success: false, error: "Invalid request body" }, 400);
+    }
+    const meta = user.user_metadata as Record<string, unknown> | undefined;
+    const identityData = (user.identities?.[0] as { identity_data?: { email?: string } } | undefined)?.identity_data;
+    const bodyEmail = (body?.email ?? "").toString().trim();
+    const adminEmail = (
+      bodyEmail ||
+      (user.email ?? "") ||
+      (meta?.email as string) ||
+      (meta?.email_address as string) ||
+      (identityData?.email ?? "") ||
+      ""
+    ).trim();
+    if (!adminEmail || !adminEmail.includes("@")) {
+      return c.json({ success: false, error: "Google account must have an email. Ensure email scope is enabled in Supabase Auth." }, 400);
+    }
+    const name = (body?.name ?? "").toString().trim();
+    const displayName = name.length >= 2 ? name : "My Restaurant";
+    const rawSlug = displayName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "");
+    const slug = rawSlug || "restaurant";
+    const tenants = await getTenantsList();
+    const existingByEmail = tenants.find((t) => t.adminEmail?.toLowerCase() === adminEmail.toLowerCase());
+    if (existingByEmail) {
+      const uid = (user.id ?? userIdNorm).toString().toLowerCase();
+      const updateRes = await fetch(`${authUrl}/admin/users/${uid}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${serviceKey}`, "apikey": serviceKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ user_metadata: { ...user.user_metadata, tenant_slug: existingByEmail.slug } }),
+      });
+      if (!updateRes.ok) console.error("Failed to link user to existing tenant:", await updateRes.text());
+      return c.json({ success: true, data: { slug: existingByEmail.slug, name: existingByEmail.name ?? existingByEmail.slug, adminEmail: existingByEmail.adminEmail ?? adminEmail } });
+    }
+    const existingSlugs = new Set(tenants.map((t) => t.slug));
+    let finalSlug = slug;
+    let n = 1;
+    while (existingSlugs.has(finalSlug)) {
+      finalSlug = `${slug}-${n}`;
+      n++;
+    }
+    const newTenant: TenantRecord = {
+      slug: finalSlug,
+      name: displayName || finalSlug,
+      adminEmail,
+      adminUserId: user.id,
+      active: true,
+      createdAt: new Date().toISOString(),
+      featureFlags: {},
+    };
+    await kv.set(TENANTS_KEY, { tenants: [...tenants, newTenant] });
+    const uid = (user.id ?? userIdNorm).toString().toLowerCase();
+    const updateRes = await fetch(`${authUrl}/admin/users/${uid}`, {
+      method: "PUT",
+      headers: { "Authorization": `Bearer ${serviceKey}`, "apikey": serviceKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ user_metadata: { ...user.user_metadata, tenant_slug: finalSlug } }),
+    });
+    if (!updateRes.ok) {
+      console.error("Failed to update user metadata:", await updateRes.text());
+      return c.json({ success: false, error: "Failed to link account" }, 500);
+    }
+    return c.json({ success: true, data: { slug: finalSlug, name: displayName || finalSlug, adminEmail } });
+  } catch (error) {
+    const msg = (error instanceof Error ? error.message : String(error)) || "Internal server error";
+    console.error("Error in tenant signup Google:", msg, error);
+    return c.json({ success: false, error: msg }, 500);
+  }
+}
+app.post("/tenants/signup-google", tenantSignupGoogle);
+app.post("/make-server-47a828b2/tenants/signup-google", tenantSignupGoogle);
+app.post("/functions/v1/make-server-47a828b2/tenants/signup-google", tenantSignupGoogle);
 
 // Menus: keep existing slug or assign new unique random slug (never derived from name).
 async function ensureMenuSlugs(kvStore: ReturnType<typeof tenantKv>, menus: any[]): Promise<any[]> {
@@ -1089,11 +1223,22 @@ app.delete("/make-server-47a828b2/categories/:id", async (c) => {
 });
 
 // General info
+async function getGeneralInfoWithTenantName(c: any): Promise<Record<string, unknown>> {
+  const tenantSlug = getTenant(c);
+  const tkv = tenantKv(tenantSlug);
+  let info = (await tkv.get("general-info")) as Record<string, unknown> | null;
+  const defaultData: Record<string, unknown> = { restaurantName: 'My Restaurant', tagline: 'Delicious food served daily', phoneNumber: '', logoImage: '', backgroundImage: '', brandColor: '#e7000b', defaultMenuId: '', socialMedia: { facebook: '', instagram: '', tiktok: '', messenger: '' } };
+  if (!info) return defaultData;
+  if (!info.restaurantName && tenantSlug) {
+    const tenants = await getTenantsList();
+    const tenant = tenants.find((t) => t.slug === tenantSlug);
+    if (tenant) info = { ...info, restaurantName: tenant.name || tenant.slug || 'My Restaurant' };
+  }
+  return info;
+}
 app.get("/general-info", async (c) => {
   try {
-    const tkv = tenantKv(getTenant(c));
-    const info = await tkv.get("general-info");
-    if (!info) return c.json({ success: true, data: { restaurantName: 'My Restaurant', tagline: 'Delicious food served daily', phoneNumber: '', logoImage: '', backgroundImage: '', brandColor: '#e7000b', defaultMenuId: '', socialMedia: { facebook: '', instagram: '', tiktok: '', messenger: '' } } });
+    const info = await getGeneralInfoWithTenantName(c);
     return c.json({ success: true, data: info });
   } catch (error) {
     return c.json({ success: false, error: String(error) }, 500);
@@ -1101,35 +1246,36 @@ app.get("/general-info", async (c) => {
 });
 app.get("/make-server-47a828b2/general-info", async (c) => {
   try {
-    const tkv = tenantKv(getTenant(c));
-    const info = await tkv.get("general-info");
-    if (!info) return c.json({ success: true, data: { restaurantName: 'My Restaurant', tagline: 'Delicious food served daily', phoneNumber: '', logoImage: '', backgroundImage: '', brandColor: '#e7000b', defaultMenuId: '', socialMedia: { facebook: '', instagram: '', tiktok: '', messenger: '' } } });
+    const info = await getGeneralInfoWithTenantName(c);
     return c.json({ success: true, data: info });
   } catch (error) {
     return c.json({ success: false, error: String(error) }, 500);
   }
 });
 
-app.put("/general-info", async (c) => {
+async function putGeneralInfo(c: any) {
   try {
-    const tkv = tenantKv(getTenant(c));
-    const body = await c.req.json();
+    const tenantSlug = getTenantSlugOrDefault(c);
+    const tkv = tenantKv(tenantSlug);
+    const body = (await c.req.json()) as Record<string, unknown>;
+    const restaurantName = (body?.restaurantName ?? "").toString().trim();
+    if (restaurantName.length >= 2) {
+      const tenants = await getTenantsList();
+      const idx = tenants.findIndex((t) => t.slug === tenantSlug);
+      if (idx >= 0) {
+        const updated = [...tenants];
+        updated[idx] = { ...updated[idx], name: restaurantName };
+        await kv.set(TENANTS_KEY, { tenants: updated });
+      }
+    }
     await tkv.set("general-info", body);
     return c.json({ success: true, data: body });
   } catch (error) {
     return c.json({ success: false, error: String(error) }, 500);
   }
-});
-app.put("/make-server-47a828b2/general-info", async (c) => {
-  try {
-    const tkv = tenantKv(getTenant(c));
-    const body = await c.req.json();
-    await tkv.set("general-info", body);
-    return c.json({ success: true, data: body });
-  } catch (error) {
-    return c.json({ success: false, error: String(error) }, 500);
-  }
-});
+}
+app.put("/general-info", putGeneralInfo);
+app.put("/make-server-47a828b2/general-info", putGeneralInfo);
 
 // Addresses (tenant branches)
 async function listAddresses(c: any) {
@@ -2062,7 +2208,7 @@ async function superAdminUpdateTenant(c: any) {
     }
     const adminUserId = tenant.adminUserId;
     const slugChange = newSlug !== oldSlug;
-    if ((newAdminEmail || newAdminPassword || slugChange) && adminUserId) {
+    if ((newAdminEmail || newAdminPassword || slugChange) && adminUserId && isValidUuid(adminUserId)) {
       const updateData: { email?: string; password?: string; user_metadata?: Record<string, unknown> } = {};
       if (newAdminEmail) updateData.email = newAdminEmail;
       if (newAdminPassword) updateData.password = newAdminPassword;
@@ -2148,7 +2294,7 @@ async function superAdminDeleteTenant(c: any) {
       return c.json({ success: false, error: "Tenant not found" }, 404);
     }
     const adminUserId = tenant.adminUserId;
-    if (adminUserId) {
+    if (adminUserId && isValidUuid(adminUserId)) {
       try {
         await supabase.auth.admin.deleteUser(adminUserId);
       } catch (delErr) {

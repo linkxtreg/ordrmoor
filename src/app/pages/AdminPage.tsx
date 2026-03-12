@@ -91,12 +91,15 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
       const updated = await generalInfoApi.update(updatedInfo);
       setGeneralInfo(updated);
       toast.success(t('toasts.generalInfoUpdated'));
+      if (updated.restaurantName?.trim() && tenantSlug) {
+        window.dispatchEvent(new CustomEvent('tenant-name-updated', { detail: { slug: tenantSlug, name: updated.restaurantName.trim() } }));
+      }
     } catch (error) {
       console.error('Error updating general info:', error);
       toast.error(t('toasts.failedToUpdateGeneralInfo'));
       throw error;
     }
-  }, [t]);
+  }, [t, tenantSlug]);
 
   const loadAddresses = useCallback(async () => {
     const data = await addressesApi.getAll();

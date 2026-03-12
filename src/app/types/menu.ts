@@ -105,6 +105,8 @@ export interface Category {
 
 /** Single source of truth for tenant branding and contact. All menu views use this for color, logo, cover, tagline/bio, phone, social. */
 export interface GeneralInfo {
+  /** Restaurant/tenant display name. When updated, syncs to tenant record and appears in menu, admin header, etc. */
+  restaurantName?: string;
   phoneNumber: string;
   tagline: string;
   backgroundImage: string;

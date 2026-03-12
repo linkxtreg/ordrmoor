@@ -5,14 +5,82 @@ import { Logo } from '../components/Logo';
 import { toast } from 'sonner';
 import { supabase } from '/utils/supabase/client';
 import { useAuth } from '../context/AuthContext';
+import { signInWithGoogle } from '../lib/googleAuth';
+import { tenantSignupApi } from '../services/api';
 
 export default function UniversalLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Handle OAuth callback: when returning from Google, create tenant and go to dashboard
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      let session;
+      try {
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('UUID') || msg.includes('uuid')) {
+          await supabase.auth.signOut();
+          toast.error('انتهت الجلسة. جرّب تسجيل الدخول بـ Google مرة أخرى.');
+        }
+        return;
+      }
+      if (!mounted || !session) return;
+      let slug = session.user?.user_metadata?.tenant_slug;
+      if (slug) {
+        login(slug);
+        navigate(`/t/${slug}/admin`, { replace: true });
+        return;
+      }
+      let sess = session;
+      if (!sess.access_token) {
+        try {
+          const { data } = await supabase.auth.refreshSession();
+          sess = data.session ?? sess;
+        } catch (refreshErr) {
+          const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr);
+          if (msg.includes('UUID') || msg.includes('uuid')) {
+            await supabase.auth.signOut();
+          }
+          toast.error('انتهت الجلسة. جرّب تسجيل الدخول بـ Google مرة أخرى.');
+          return;
+        }
+      }
+      if (!sess?.access_token) {
+        toast.error('انتهت الجلسة. جرّب تسجيل الدخول بـ Google مرة أخرى.');
+        return;
+      }
+      try {
+        const result = await tenantSignupApi.signupGoogle(
+          sess.access_token,
+          '',
+          sess.user?.email ?? undefined
+        );
+        if (!mounted) return;
+        try {
+          await supabase.auth.refreshSession();
+        } catch {
+          // Ignore refresh errors; we have the slug from API
+        }
+        if (!mounted) return;
+        login(result.slug);
+        toast.success('تم إنشاء حسابك بنجاح! يمكنك تعديل اسم المطعم لاحقاً.');
+        navigate(`/t/${result.slug}/admin`, { replace: true });
+      } catch (err) {
+        if (!mounted) return;
+        toast.error(err instanceof Error ? err.message : 'فشل إنشاء الحساب');
+      }
+    })();
+    return () => { mounted = false; };
+  }, [login, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +182,18 @@ export default function UniversalLoginPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
             <button
               type="button"
-              className="w-full bg-white text-[#101010] py-3 rounded-lg font-medium border border-stone-300 hover:bg-stone-50 transition-colors flex items-center justify-center gap-3"
+              disabled={isLoading || googleLoading}
+              onClick={async () => {
+                setGoogleLoading(true);
+                try {
+                  await signInWithGoogle('/login');
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : 'فشل تسجيل الدخول بـ Google');
+                } finally {
+                  setGoogleLoading(false);
+                }
+              }}
+              className="w-full bg-white text-[#101010] py-3 rounded-lg font-medium border border-stone-300 hover:bg-stone-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2 6.9 2.2 2.8 6.3 2.8 11.4S6.9 20.6 12 20.6c6.9 0 9.1-4.8 9.1-7.3 0-.5-.1-.9-.1-1.3H12Z" />
@@ -122,7 +201,7 @@ export default function UniversalLoginPage() {
                 <path fill="#FBBC05" d="M12 20.6c2.7 0 4.9-.9 6.5-2.5l-3.2-2.6c-.9.6-2 .9-3.3.9-2.5 0-4.6-1.7-5.4-4l-3.3 2.6c1.6 3.2 4.9 5.6 8.7 5.6Z" />
                 <path fill="#4285F4" d="M18.5 18.1c1.9-1.8 2.6-4.4 2.6-6.8 0-.5-.1-.9-.1-1.3H12v3.9h5.5c-.2 1.1-.9 2.7-2.2 3.6l3.2 2.6Z" />
               </svg>
-              <span>أو سجل بـ Google</span>
+              <span>{googleLoading ? 'جاري التحويل...' : 'سجّل الدخول بـ Google'}</span>
             </button>
 
             <div className="relative">

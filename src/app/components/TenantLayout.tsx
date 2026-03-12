@@ -83,6 +83,25 @@ export function TenantLayout() {
   }, [tenantSlug]);
 
   useEffect(() => {
+    const onTenantNameUpdated = (e: CustomEvent<{ slug: string; name: string }>) => {
+      if (e.detail?.slug === tenantSlug && e.detail?.name) {
+        setTenantName(e.detail.name);
+        document.title = `${e.detail.name} | ${DEFAULT_TITLE}`;
+        try {
+          localStorage.setItem(
+            `tenant-check:${tenantSlug}`,
+            JSON.stringify({ exists: true, name: e.detail.name, cachedAt: Date.now() })
+          );
+        } catch {
+          // Ignore
+        }
+      }
+    };
+    window.addEventListener('tenant-name-updated', onTenantNameUpdated as EventListener);
+    return () => window.removeEventListener('tenant-name-updated', onTenantNameUpdated as EventListener);
+  }, [tenantSlug]);
+
+  useEffect(() => {
     if (!tenantSlug || !exists) {
       document.title = DEFAULT_TITLE;
       setTenantName(null);

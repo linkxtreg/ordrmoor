@@ -627,7 +627,8 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
   const brandColor = generalInfo.brandColor || '#e7000b';
 
-  const initials = (tenantName || '')
+  const displayName = tenantName || generalInfo.restaurantName || '';
+  const initials = displayName
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
@@ -736,7 +737,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
             ) : (
               <div className="text-white text-center leading-tight py-0.5 px-1">
                 <p className="text-[9px] font-bold uppercase" style={{ lineHeight: 1.2 }}>
-                  {(tenantName || '').split(/\s+/).slice(0, 2).join(' ').toUpperCase() || 'MENU'}
+                  {displayName.split(/\s+/).slice(0, 2).join(' ').toUpperCase() || 'MENU'}
                 </p>
                 <p className="text-base font-bold mt-0.5">{initials}</p>
               </div>
@@ -746,7 +747,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           {/* Right: name, phone, slogan with arrow, social - left-aligned */}
           <div className="flex-1 min-w-0 flex flex-col gap-1">
             <h1 className="font-bold text-xl text-black leading-tight">
-              {tenantName || generalInfo.tagline || 'Menu'}
+              {tenantName || generalInfo.restaurantName || generalInfo.tagline || 'Menu'}
             </h1>
             {generalInfo.phoneNumber && (
               <a

@@ -837,14 +837,43 @@ export const initApi = {
 
 /** Signup payload: Display Name, Tenant Admin Login (email), Slug (URL), password. Backend should set createdAt when the tenant is created. */
 export const tenantSignupApi = {
-  async signup(data: { name: string; adminEmail: string; adminPassword: string; slug: string }): Promise<{ slug: string; name: string; adminEmail: string }> {
+  async signup(data: { name: string; adminEmail: string; adminPassword: string; slug: string }): Promise<{ slug: string; name: string; adminEmail: string; existingAccount?: boolean }> {
     const response = await fetch(`${API_BASE}/tenants/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
       body: JSON.stringify(data),
     });
-    const result = await safeJsonParse<{ success?: boolean; data?: { slug: string; name: string; adminEmail: string }; error?: string }>(response);
+    const result = await safeJsonParse<{ success?: boolean; data?: { slug: string; name: string; adminEmail: string }; error?: string; existingAccount?: boolean }>(response);
     if (!result.success) throw new Error(result.error || 'Signup failed');
+    return { ...result.data!, existingAccount: result.existingAccount };
+  },
+
+  /** Complete signup for users who signed in with Google. Requires access token from session. */
+  async signupGoogle(accessToken: string, name: string, email?: string): Promise<{ slug: string; name: string; adminEmail: string }> {
+    const url = `${API_BASE}/tenants/signup`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${publicAnonKey}`,
+        'X-User-Token': accessToken,
+      },
+      body: JSON.stringify({ name: name.trim(), email: email?.trim() }),
+    });
+    const text = await response.text();
+    const trimmed = text.trim();
+    if (!trimmed) {
+      throw new Error(`Empty response (${response.status})`);
+    }
+    let result: { success?: boolean; data?: { slug: string; name: string; adminEmail: string }; error?: string };
+    try {
+      result = JSON.parse(trimmed) as typeof result;
+    } catch {
+      throw new Error(`Invalid response [${response.status}]: ${trimmed.slice(0, 120)}`);
+    }
+    if (!result.success) {
+      throw new Error(result.error || `Signup failed (${response.status})`);
+    }
     return result.data!;
   },
 };
