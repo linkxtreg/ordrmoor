@@ -71,9 +71,9 @@ async function initializeStorage() {
 }
 initializeStorage();
 
-// Menu slug: unique random key (short alphanumeric) so Arabic/long names don't produce hard URLs.
+// Menu slug: unique 6-char alphanumeric code for clean, shareable URLs (no Arabic/double-encoding).
 const SLUG_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
-function randomMenuSlug(length = 10): string {
+function randomMenuSlug(length = 6): string {
   const arr = new Uint8Array(length);
   crypto.getRandomValues(arr);
   let s = "";
@@ -1885,12 +1885,17 @@ async function loyaltyCheckIn(c: any) {
 app.post("/public/loyalty/:tenantSlug/checkin", loyaltyCheckIn);
 app.post("/make-server-47a828b2/public/loyalty/:tenantSlug/checkin", loyaltyCheckIn);
 
-// Image upload
+// Image upload: 10MB max, PNG/JPEG/WebP only
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+
 app.post("/upload-image", async (c) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
     if (!file) return c.json({ success: false, error: 'No file provided' }, 400);
+    if (file.size > MAX_IMAGE_SIZE) return c.json({ success: false, error: 'File is too large. Please upload an image smaller than 10MB.' }, 400);
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return c.json({ success: false, error: 'Invalid file type. Please upload PNG, JPEG, or WebP.' }, 400);
     const fileExt = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const bucketName = 'make-47a828b2-menu-images';
@@ -1908,6 +1913,8 @@ app.post("/make-server-47a828b2/upload-image", async (c) => {
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
     if (!file) return c.json({ success: false, error: 'No file provided' }, 400);
+    if (file.size > MAX_IMAGE_SIZE) return c.json({ success: false, error: 'File is too large. Please upload an image smaller than 10MB.' }, 400);
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return c.json({ success: false, error: 'Invalid file type. Please upload PNG, JPEG, or WebP.' }, 400);
     const fileExt = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const bucketName = 'make-47a828b2-menu-images';

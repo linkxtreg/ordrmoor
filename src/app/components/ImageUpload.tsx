@@ -3,6 +3,7 @@ import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { imageApi } from '../services/api';
 import { toast } from 'sonner';
 import { useAdminLanguage } from '../context/AdminLanguageContext';
+import { MAX_FILE_SIZE, ALLOWED_IMAGE_TYPES, ACCEPT_IMAGES } from '../constants/upload';
 
 interface ImageUploadProps {
   value: string;
@@ -29,13 +30,13 @@ export function ImageUpload({ value, onChange, uploadOptions }: ImageUploadProps
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        toast.error('Please upload a PNG, JPEG, or WebP image');
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error('File is too large. Please upload an image smaller than 10MB.');
         return;
       }
 
@@ -153,7 +154,7 @@ export function ImageUpload({ value, onChange, uploadOptions }: ImageUploadProps
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_IMAGES}
         onChange={handleFileChange}
         className="hidden"
       />

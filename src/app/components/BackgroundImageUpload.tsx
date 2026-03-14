@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { imageApi } from '../services/api';
 import { toast } from 'sonner';
+import { MAX_FILE_SIZE, ALLOWED_IMAGE_TYPES, ACCEPT_IMAGES } from '../constants/upload';
 
 interface BackgroundImageUploadProps {
   value: string;
@@ -16,13 +17,13 @@ export function BackgroundImageUpload({ value, onChange }: BackgroundImageUpload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        toast.error('Please upload a PNG, JPEG, or WebP image');
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size should be less than 5MB');
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error('File is too large. Please upload an image smaller than 10MB.');
         return;
       }
 
@@ -129,7 +130,7 @@ export function BackgroundImageUpload({ value, onChange }: BackgroundImageUpload
                 </div>
                 <div className="text-center px-4">
                   <p className="text-sm font-medium">Click to upload background image</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 5MB (3:4 ratio)</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPEG, WebP up to 10MB</p>
                 </div>
               </>
             )}
@@ -140,7 +141,7 @@ export function BackgroundImageUpload({ value, onChange }: BackgroundImageUpload
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={ACCEPT_IMAGES}
         onChange={handleFileChange}
         className="hidden"
       />
