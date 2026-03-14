@@ -227,6 +227,7 @@ export const adminTranslations: Record<AdminLang, TranslationTree> = {
     validation: {
       fillCategoryAndName: 'Please fill in Category and Name (English).',
       addOnePricingOption: 'Add at least one pricing option with a name (EN or AR) and price.',
+      fillAdvancedMatrix: 'Add row/column options and at least one price in the pricing matrix.',
     },
     deleteDialog: {
       cancel: 'Cancel',
@@ -599,6 +600,7 @@ export const adminTranslations: Record<AdminLang, TranslationTree> = {
     validation: {
       fillCategoryAndName: 'أدخل التصنيف والاسم (الإنجليزي).',
       addOnePricingOption: 'أضف خيار سعر واحد على الأقل مع الاسم والسعر.',
+      fillAdvancedMatrix: 'أضف خيارات الصف/العمود وسعراً واحداً على الأقل في مصفوفة الأسعار.',
     },
     deleteDialog: {
       cancel: 'إلغاء',

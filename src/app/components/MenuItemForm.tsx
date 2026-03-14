@@ -31,6 +31,7 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
     descriptionAr: '',
   });
   const [showOptional, setShowOptional] = useState(false);
+  const [pricingMode, setPricingMode] = useState<'simple' | 'advanced'>('simple');
   const [matrixOptionGroups, setMatrixOptionGroups] = useState<OptionGroup[]>([]);
   const [matrixCells, setMatrixCells] = useState<PricingMatrixCell[]>([]);
 
@@ -41,8 +42,10 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
       let price = item.price || 0;
       let groups: OptionGroup[] = [];
       let cells: PricingMatrixCell[] = [];
+      let useAdvanced = false;
 
       if (hasTwoLayerMatrix(item) && item.optionGroups && item.pricingMatrix) {
+        useAdvanced = true;
         groups = item.optionGroups.map((g) => ({
           ...g,
           options: g.options.map((o) => ({ ...o, id: o.id || crypto.randomUUID() })),
@@ -53,12 +56,14 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
       } else if (hasLegacyPricing(item)) {
         const model = normalizePricingModel(item);
         if (model.kind === 'matrix') {
+          useAdvanced = true;
           groups = model.optionGroups;
           cells = model.pricingMatrix.cells;
           const first = cells[0];
           price = first?.price ?? 0;
         }
       } else if (item.priceVariants && item.priceVariants.length > 0) {
+        useAdvanced = true;
         const v = item.priceVariants;
         const rowGroupId = 'rg-' + crypto.randomUUID().slice(0, 8);
         const colGroupId = 'cg-' + crypto.randomUUID().slice(0, 8);
@@ -91,6 +96,7 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
 
       setMatrixOptionGroups(groups);
       setMatrixCells(cells);
+      setPricingMode(useAdvanced ? 'advanced' : 'simple');
 
       setFormData({
         id: item.id,
@@ -136,6 +142,7 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
         { id: g2, labelEn: 'Column', labelAr: 'العمود', label: 'Column', options: [{ id: o2, nameEn: '', nameAr: '', name: '' }] },
       ]);
       setMatrixCells([{ rowOptionId: o1, columnOptionId: o2, price: 0 }]);
+      setPricingMode('simple');
       setShowOptional(false);
     }
   }, [item, categories]);
@@ -220,6 +227,31 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
       return;
     }
 
+    if (pricingMode === 'simple') {
+      const price = Number(formData.price) ?? 0;
+      if (price < 0 || !Number.isFinite(price)) {
+        alert(t('validation.addOnePricingOption'));
+        return;
+      }
+      onSubmit({
+        ...formData,
+        id: formData.id || `item-${Date.now()}`,
+        name: primaryName,
+        description: (formData.descriptionEn ?? formData.description ?? '').trim(),
+        nameEn: nameEn || undefined,
+        nameAr: nameAr || undefined,
+        descriptionEn: (formData.descriptionEn ?? formData.description ?? '').trim(),
+        descriptionAr: (formData.descriptionAr ?? '').trim(),
+        price,
+        discountedPrice: formData.discountedPrice,
+        priceVariants: undefined,
+        optionGroups: undefined,
+        pricingMatrix: undefined,
+        pricing: undefined,
+      });
+      return;
+    }
+
     const validRowOpts = rowOptions.filter((o) => ((o.nameEn ?? o.name ?? '').trim() || (o.nameAr ?? '').trim()));
     const validColOpts = colOptions.filter((o) => ((o.nameEn ?? o.name ?? '').trim() || (o.nameAr ?? '').trim()));
     const validRowIds = new Set(validRowOpts.map((o) => o.id));
@@ -229,6 +261,11 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
     );
 
     const useMatrix = validRowOpts.length > 0 && validColOpts.length > 0 && validCells.length > 0;
+
+    if (!useMatrix) {
+      alert(t('validation.fillAdvancedMatrix'));
+      return;
+    }
 
     if (useMatrix) {
       const price = Math.min(...validCells.map((c) => c.price));
@@ -266,28 +303,6 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
       });
       return;
     }
-
-    const price = Number(formData.price) ?? 0;
-    if (price < 0 || !Number.isFinite(price)) {
-      alert(t('validation.addOnePricingOption'));
-      return;
-    }
-    onSubmit({
-      ...formData,
-      id: formData.id || `item-${Date.now()}`,
-      name: primaryName,
-      description: (formData.descriptionEn ?? formData.description ?? '').trim(),
-      nameEn: nameEn || undefined,
-      nameAr: nameAr || undefined,
-      descriptionEn: (formData.descriptionEn ?? formData.description ?? '').trim(),
-      descriptionAr: (formData.descriptionAr ?? '').trim(),
-      price,
-      discountedPrice: undefined,
-      priceVariants: undefined,
-      optionGroups: undefined,
-      pricingMatrix: undefined,
-      pricing: undefined,
-    });
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -378,20 +393,170 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('itemForm.priceEgp')} *
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t('itemForm.pricingMode')} *
               </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.price === 0 ? '' : formData.price}
-                onChange={(e) => handleChange('price', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                className={numberInputClass}
-              />
-              <p className="text-xs text-gray-500 mt-1">For multiple prices (e.g. Single/Double × Sandwich/Combo), use the pricing matrix in optional fields below.</p>
+              <div className="flex gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pricingMode"
+                    checked={pricingMode === 'simple'}
+                    onChange={() => setPricingMode('simple')}
+                    className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">{t('itemForm.pricingModeSimple')}</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pricingMode"
+                    checked={pricingMode === 'advanced'}
+                    onChange={() => setPricingMode('advanced')}
+                    className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">{t('itemForm.pricingModeAdvanced')}</span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {pricingMode === 'simple' ? t('itemForm.pricingModeSimpleDesc') : t('itemForm.pricingModeAdvancedDesc')}
+              </p>
             </div>
+
+            {pricingMode === 'simple' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('itemForm.priceEgp')} *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.price === 0 ? '' : formData.price}
+                  onChange={(e) => handleChange('price', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className={numberInputClass}
+                />
+              </div>
+            )}
+
+            {pricingMode === 'advanced' && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-800">{t('itemForm.pricingMatrix')}</h3>
+                <p className="text-xs text-gray-500">{t('itemForm.pricingMatrixHint')}</p>
+                <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 w-28">
+                          {t('itemForm.variationsLabel')}
+                        </th>
+                        {colOptions.map((co) => (
+                          <th key={co.id} className="px-2 py-2 align-top">
+                            <div className="flex items-center gap-1 min-w-[90px]">
+                              <input
+                                type="text"
+                                value={co.nameEn ?? co.name ?? ''}
+                                onChange={(e) => updateMatrixOption(1, co.id, { nameEn: e.target.value, name: e.target.value })}
+                                placeholder="e.g. Sandwich"
+                                className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-md text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement)?.focus()}
+                                className="p-1.5 text-gray-400 hover:text-indigo-600 shrink-0"
+                                aria-label={t('items.edit')}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeMatrixOption(1, co.id)}
+                                disabled={colOptions.length <= 1}
+                                className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-40 shrink-0"
+                                aria-label={t('items.delete')}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </th>
+                        ))}
+                        <th className="px-2 py-2 w-12 align-top">
+                          <button
+                            type="button"
+                            onClick={() => addMatrixOption(1)}
+                            className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-md"
+                            aria-label={t('itemForm.addColumnOption')}
+                          >
+                            <Plus size={18} />
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rowOptions.map((ro) => (
+                        <tr key={ro.id} className="border-t border-gray-200">
+                          <td className="px-3 py-2 bg-gray-50/50">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={ro.nameEn ?? ro.name ?? ''}
+                                onChange={(e) => updateMatrixOption(0, ro.id, { nameEn: e.target.value, name: e.target.value })}
+                                placeholder="e.g. Single"
+                                className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-md text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement)?.focus()}
+                                className="p-1.5 text-gray-400 hover:text-indigo-600 shrink-0"
+                                aria-label={t('items.edit')}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeMatrixOption(0, ro.id)}
+                                disabled={rowOptions.length <= 1}
+                                className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-40 shrink-0"
+                                aria-label={t('items.delete')}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                          {colOptions.map((co) => (
+                            <td key={co.id} className="px-2 py-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={getCellPrice(ro.id, co.id) || ''}
+                                onChange={(e) => setCellPrice(ro.id, co.id, parseFloat(e.target.value) || 0)}
+                                placeholder="0"
+                                className={`${numberInputClass} w-full px-2 py-1.5 text-center rounded-md border border-gray-300`}
+                              />
+                            </td>
+                          ))}
+                          <td className="w-12" />
+                        </tr>
+                      ))}
+                      <tr>
+                        <td colSpan={(colOptions.length + 2) as number} className="px-3 py-2 border-t border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => addMatrixOption(0)}
+                            className="flex items-center gap-2 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-md text-sm font-medium"
+                          >
+                            <Plus size={16} />
+                            {t('itemForm.addRowOption')}
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Optional */}
@@ -442,122 +607,6 @@ export function MenuItemForm({ item, onSubmit, onCancel, categories }: MenuItemF
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-gray-800">{t('itemForm.pricingMatrix')}</h3>
-                  <p className="text-xs text-gray-500">For items with multiple prices (e.g. burger count × addon). Leave empty to use the single price above.</p>
-                  <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-3 py-2.5 text-left font-semibold text-gray-700 w-28">
-                            {t('itemForm.variationsLabel')}
-                          </th>
-                          {colOptions.map((co) => (
-                            <th key={co.id} className="px-2 py-2 align-top">
-                              <div className="flex items-center gap-1 min-w-[90px]">
-                                <input
-                                  type="text"
-                                  value={co.nameEn ?? co.name ?? ''}
-                                  onChange={(e) => updateMatrixOption(1, co.id, { nameEn: e.target.value, name: e.target.value })}
-                                  placeholder="e.g. Sandwich"
-                                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-md text-sm"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={(e) => (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement)?.focus()}
-                                  className="p-1.5 text-gray-400 hover:text-indigo-600 shrink-0"
-                                  aria-label={t('items.edit')}
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeMatrixOption(1, co.id)}
-                                  disabled={colOptions.length <= 1}
-                                  className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-40 shrink-0"
-                                  aria-label={t('items.delete')}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </th>
-                          ))}
-                          <th className="px-2 py-2 w-12 align-top">
-                            <button
-                              type="button"
-                              onClick={() => addMatrixOption(1)}
-                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-md"
-                              aria-label={t('itemForm.addColumnOption')}
-                            >
-                              <Plus size={18} />
-                            </button>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rowOptions.map((ro) => (
-                          <tr key={ro.id} className="border-t border-gray-200">
-                            <td className="px-3 py-2 bg-gray-50/50">
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="text"
-                                  value={ro.nameEn ?? ro.name ?? ''}
-                                  onChange={(e) => updateMatrixOption(0, ro.id, { nameEn: e.target.value, name: e.target.value })}
-                                  placeholder="e.g. Single"
-                                  className="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-md text-sm"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={(e) => (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement)?.focus()}
-                                  className="p-1.5 text-gray-400 hover:text-indigo-600 shrink-0"
-                                  aria-label={t('items.edit')}
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeMatrixOption(0, ro.id)}
-                                  disabled={rowOptions.length <= 1}
-                                  className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-40 shrink-0"
-                                  aria-label={t('items.delete')}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
-                            {colOptions.map((co) => (
-                              <td key={co.id} className="px-2 py-2">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={getCellPrice(ro.id, co.id) || ''}
-                                  onChange={(e) => setCellPrice(ro.id, co.id, parseFloat(e.target.value) || 0)}
-                                  placeholder="0"
-                                  className={`${numberInputClass} w-full px-2 py-1.5 text-center rounded-md border border-gray-300`}
-                                />
-                              </td>
-                            ))}
-                            <td className="w-12" />
-                          </tr>
-                        ))}
-                        <tr>
-                          <td colSpan={(colOptions.length + 2) as number} className="px-3 py-2 border-t border-gray-200">
-                            <button
-                              type="button"
-                              onClick={() => addMatrixOption(0)}
-                              className="flex items-center gap-2 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-md text-sm font-medium"
-                            >
-                              <Plus size={16} />
-                              {t('itemForm.addRowOption')}
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
 
                 <div>
