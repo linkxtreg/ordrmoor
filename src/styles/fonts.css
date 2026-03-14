@@ -1,5 +1,4 @@
-/* Import Google Fonts with Arabic support */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=optional');
+/* Phase 2: Fonts loaded non-blocking from index.html (preload + onload). @import removed to avoid duplicate request. */
 
 /* Apply fonts globally with Arabic support */
 body {

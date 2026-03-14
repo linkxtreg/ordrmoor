@@ -39,6 +39,7 @@ This started as a demo admin interface and has been transformed into a **fully f
 
 - **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Complete architecture overview and integration guide
 - **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Full API reference for mobile developers
+- **[PERFORMANCE.md](./PERFORMANCE.md)** - Lighthouse performance target (score ≥ 90) and how to verify
 
 ## 🎯 Key Features
 

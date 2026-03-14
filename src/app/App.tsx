@@ -2,13 +2,14 @@ import React, { Suspense } from 'react';
 import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-router';
 import { Toaster } from 'sonner';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { TenantLayout } from './components/TenantLayout';
 import { LoadingIcon } from './components/LoadingIcon';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AdminLanguageProvider } from './context/AdminLanguageContext';
 import { initAnalytics, isAnalyticsEnabled, trackLandingCtaClick, trackPageView } from './lib/analytics';
 import { supabase } from '/utils/supabase/client';
 
+/* Phase 3: Lazy-load layout so vendor-router and route chunks load on demand */
+const TenantLayout = React.lazy(() => import('./components/TenantLayout').then((m) => ({ default: m.TenantLayout })));
 const AdminPage = React.lazy(() => import('./pages/AdminPage'));
 const CustomerMenuPage = React.lazy(() => import('./pages/CustomerMenuPage'));
 const SuperAdminLoginPage = React.lazy(() => import('./pages/SuperAdminLoginPage'));
@@ -122,7 +123,7 @@ export default function App() {
   const router = React.useMemo(() => createBrowserRouter([
     {
       path: '/t/:tenantSlug',
-      element: <TenantLayout />,
+      element: withSuspense(<TenantLayout />),
       children: [
         { path: 'login', element: <Navigate to="/login" replace /> },
         { path: 'admin', element: <TenantProtectedAdmin /> },

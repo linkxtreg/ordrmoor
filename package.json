@@ -9,7 +9,8 @@
     "dev": "vite",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy:functions": "supabase functions deploy make-server-47a828b2"
+    "deploy:functions": "supabase functions deploy make-server-47a828b2",
+    "perf:lighthouse": "lighthouse --only-categories=performance --output=json --output=html --output-path=./lighthouse-report --chrome-flags='--headless'"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -79,6 +80,7 @@
     "@vitejs/plugin-react": "4.7.0",
     "@vitejs/plugin-react-swc": "^4.3.0",
     "jsdom": "^28.1.0",
+    "lighthouse": "^12.0.0",
     "rollup-plugin-visualizer": "^7.0.1",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5",

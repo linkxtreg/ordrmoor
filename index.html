@@ -7,7 +7,9 @@
       <link rel="icon" type="image/png" href="/favicon.png" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=optional" />
+      <!-- Phase 2: Non-blocking font load; apply on load so preconnect is used -->
+      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Inter:wght@400;600&family=Poppins:wght@400;600&display=optional" onload="this.onload=null;this.rel='stylesheet'" />
+      <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Inter:wght@400;600&family=Poppins:wght@400;600&display=optional" /></noscript>
       <title>OrdrMoor | Digital Menu Platform</title>
       <meta
         name="description"
