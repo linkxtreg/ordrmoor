@@ -1,19 +1,25 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, Fragment, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Star, AlertCircle, Gift, Phone, Share2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
 import type { OfferWithItems } from '../types/offers';
-import { customerMenuApi, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
+import { customerMenuApi, isMenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
 import type { PublicLoyaltyProgram } from '../types/loyalty';
-import { LoyaltyBottomSheet } from './LoyaltyBottomSheet';
-import { ShareBottomSheet } from './ShareBottomSheet';
 import { trackMenuItemClick } from '../lib/analytics';
 import { optimizeImageUrl } from '/utils/imageCdn';
+import { getOptimizedImageUrl } from '/utils/imageUtils';
 import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
 import { hasTwoLayerMatrix, normalizePricingModel, getMatrixCellPrice } from '../lib/pricing';
 import { toast } from 'sonner';
 import svgPaths from '@/imports/svg-t21ykul132';
+
+const LoyaltyBottomSheet = React.lazy(() =>
+  import('./LoyaltyBottomSheet').then((m) => ({ default: m.LoyaltyBottomSheet }))
+);
+const ShareBottomSheet = React.lazy(() =>
+  import('./ShareBottomSheet').then((m) => ({ default: m.ShareBottomSheet }))
+);
 
 // All menu views use only General Info for branding and contact: color, logo, cover image, tagline/bio, phone, social links.
 // Menu entities only define structure (name, slug, categories, items); they do not override branding.
@@ -132,6 +138,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   const loadMenuData = async ({ showLoader = true }: { showLoader?: boolean } = {}) => {
     try {
       if (showLoader) setIsLoading(true);
+      setLoadError(null);
       let infoData: GeneralInfo;
       let menuData: MenuItem[];
       let categoriesData: Category[];
@@ -141,7 +148,14 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         infoData = bundle.generalInfo;
         menuData = bundle.items || [];
         categoriesData = bundle.categories || [];
-      } catch {
+      } catch (err) {
+        if (isMenuNotFoundError(err)) {
+          setMenuItems([]);
+          setCategories([]);
+          setGeneralInfo(null);
+          setLoadError(err.message || 'Menu not found');
+          return;
+        }
         // Fallback for old backend versions before public bundle exists.
         try {
           const bundle = await customerMenuApi.getBundle(slug);
@@ -276,10 +290,12 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         generalInfo: infoData,
       });
     } catch (error) {
-      console.error('Error loading menu data:', error);
-      // Show more detailed error message
       const errorMessage = error instanceof Error ? error.message : 'Failed to load menu';
-      toast.error(`Menu loading error: ${errorMessage}`);
+      const isExpectedNotFound = isMenuNotFoundError(error) || /menu not found|tenant not found/i.test(errorMessage);
+      if (!isExpectedNotFound) {
+        console.error('Error loading menu data:', error);
+        toast.error(`Menu loading error: ${errorMessage}`);
+      }
       setLoadError(errorMessage);
     } finally {
       if (showLoader) setIsLoading(false);
@@ -634,7 +650,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     .toUpperCase() || 'BR';
 
   const lcpImageUrl = highlightImages[0] ?? generalInfo.backgroundImage ?? generalInfo.logoImage;
-  const lcpPreloadUrl = lcpImageUrl ? optimizeImageUrl(lcpImageUrl) : null;
+  const lcpPreloadUrl = lcpImageUrl ? optimizeImageUrl(lcpImageUrl, 1000, 80) : null;
 
   return (
     <div className="relative min-h-screen bg-white max-w-[600px] mx-auto shadow-lg" dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -688,23 +704,29 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                     setHighlightDragPx(0);
                   }}
                 >
-                  {highlightInfiniteSlides.map((src, i) => (
-                    <div
-                      key={i}
-                      className="flex shrink-0 min-w-0"
-                      style={{ flexBasis: `${100 / highlightSlideCount}%` }}
-                    >
-                      <div className="relative w-full aspect-video bg-gray-100 rounded-2xl overflow-hidden">
-                        <img
-                          src={optimizeImageUrl(src)}
-                          alt=""
-                          className="w-full h-full object-cover rounded-2xl pointer-events-none select-none"
-                          draggable={false}
-                          fetchPriority={i === (highlightRealCount <= 1 ? 0 : 1) ? 'high' : 'auto'}
-                        />
+                  {highlightInfiniteSlides.map((src, i) => {
+                    const isLcp = i === (highlightRealCount <= 1 ? 0 : 1);
+                    return (
+                      <div
+                        key={i}
+                        className="flex shrink-0 min-w-0"
+                        style={{ flexBasis: `${100 / highlightSlideCount}%` }}
+                      >
+                        <div className="relative w-full aspect-video bg-gray-100 rounded-2xl overflow-hidden">
+                          <img
+                            src={optimizeImageUrl(src, 1000, 80)}
+                            alt=""
+                            width={800}
+                            height={450}
+                            className="w-full h-full object-cover rounded-2xl pointer-events-none select-none"
+                            draggable={false}
+                            fetchPriority={isLcp ? 'high' : 'auto'}
+                            loading={isLcp ? 'eager' : 'lazy'}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -717,10 +739,13 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           >
             {generalInfo.backgroundImage ? (
               <img
-                src={optimizeImageUrl(generalInfo.backgroundImage)}
+                src={optimizeImageUrl(generalInfo.backgroundImage, 1000, 80)}
                 alt=""
+                width={800}
+                height={450}
                 className="w-full h-[220px] object-cover"
                 fetchPriority="high"
+                loading="eager"
               />
             ) : (
               <div className="w-full h-[220px]" />
@@ -737,8 +762,10 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           >
             {generalInfo.logoImage ? (
               <img
-                src={generalInfo.logoImage}
+                src={getOptimizedImageUrl(generalInfo.logoImage, { maxWidth: 144, quality: 85 })}
                 alt=""
+                width={72}
+                height={72}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -920,7 +947,14 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                   >
                     <div className="relative">
                       {item.image ? (
-                        <img src={item.image} alt={getItemName(item)} className="h-[220px] w-full object-cover" />
+                        <img
+                          src={getOptimizedImageUrl(item.image, { maxWidth: 300, quality: 80 })}
+                          alt={getItemName(item)}
+                          width={220}
+                          height={220}
+                          loading="lazy"
+                          className="h-[220px] w-full object-cover"
+                        />
                       ) : (
                         <div className="h-[220px] w-full bg-gray-100" />
                       )}
@@ -960,12 +994,16 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
           return (
             <Fragment key={category.id}>
-            <div
+            <section
               ref={(el) => (categoryRefs.current[category.name] = el)}
               data-category={category.name}
               className="scroll-mt-[100px]"
               style={{ contentVisibility: 'auto' }}
+              aria-labelledby={`category-${category.id}`}
             >
+              <h2 id={`category-${category.id}`} className="sr-only">
+                {getCategoryName(category)}
+              </h2>
               {categoryItems.map((item) => {
                 const isMatrix = hasTwoLayerMatrix(item);
                 const selectedVariant = getSelectedVariant(item);
@@ -984,8 +1022,10 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                   {item.image && !failedImageIds.has(item.id) && (
                     <div className="w-full flex justify-center overflow-hidden">
                       <img 
-                        src={item.image} 
+                        src={getOptimizedImageUrl(item.image, { maxWidth: 300, quality: 80 })}
                         alt={getItemName(item)} 
+                        width={600}
+                        height={400}
                         loading="lazy"
                         decoding="async"
                         className="max-w-full w-full h-auto max-h-[420px] sm:max-h-[420px] md:max-h-[420px] object-contain"
@@ -1152,7 +1192,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                 </div>
                 );
               })}
-            </div>
+            </section>
             {showLoyaltyAfterThis && loyaltyProgram && (
               <div className="px-6 pb-6">
                 <button
@@ -1171,9 +1211,9 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                       <Gift className="absolute bottom-4 left-1/2 -translate-x-1/2 w-14 h-14 opacity-15" style={{ color: 'rgba(255,255,255,0.4)' }} strokeWidth={1.5} />
                     </div>
                     <div className="relative">
-                      <h3 className="font-bold text-lg sm:text-xl text-white text-center uppercase tracking-tight">
+                      <h2 className="font-bold text-lg sm:text-xl text-white text-center uppercase tracking-tight">
                         {loyaltyProgram.name}
-                      </h3>
+                      </h2>
                       <p className="font-normal text-sm text-white/95 text-center mt-1 line-clamp-2">
                         {loyaltyProgram.rewardDescription}
                       </p>
@@ -1196,26 +1236,36 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         })}
       </div>
 
-      {/* Loyalty bottom sheet (rendered once, opened by banner) */}
+      {/* Loyalty bottom sheet (lazy-loaded; only when loyalty program exists) */}
       {loyaltyProgram && (
-        <LoyaltyBottomSheet
-          open={loyaltySheetOpen}
-          onOpenChange={setLoyaltySheetOpen}
-          program={loyaltyProgram}
-          tenantSlug={tenantSlug}
-          language={language}
-          brandColor={brandColor}
-        />
+        <Suspense fallback={null}>
+          <LoyaltyBottomSheet
+            open={loyaltySheetOpen}
+            onOpenChange={setLoyaltySheetOpen}
+            program={loyaltyProgram}
+            tenantSlug={tenantSlug}
+            language={language}
+            brandColor={brandColor}
+          />
+        </Suspense>
       )}
 
-      {/* Share bottom sheet */}
-      <ShareBottomSheet
-        open={shareSheetOpen}
-        onOpenChange={setShareSheetOpen}
-        shareUrl={typeof window !== 'undefined' ? `${window.location.origin}${basePath}/menu${slug ? `/${slug}` : ''}` : ''}
-        language={language}
-        brandColor={brandColor}
-      />
+      {/* Share bottom sheet (lazy-loaded on first open to defer qrcode lib) */}
+      {shareSheetOpen && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" aria-hidden>
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          <ShareBottomSheet
+            open={shareSheetOpen}
+            onOpenChange={setShareSheetOpen}
+            shareUrl={typeof window !== 'undefined' ? `${window.location.origin}${basePath}/menu${slug ? `/${slug}` : ''}` : ''}
+            language={language}
+            brandColor={brandColor}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

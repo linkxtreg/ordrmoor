@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router';
 import { TenantProvider } from '../context/TenantContext';
 import { FeatureFlagsProvider } from '../context/FeatureFlagsContext';
 import { superAdminApi, customerMenuApi } from '../services/api';
-import NotFoundPage from '../pages/NotFoundPage';
 import { LoadingIcon } from './LoadingIcon';
+
+const NotFoundPage = React.lazy(() => import('../pages/NotFoundPage'));
 
 const DEFAULT_TITLE = 'OrdrMoor Menu';
 const TENANT_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -136,7 +137,15 @@ export function TenantLayout() {
   }, [tenantSlug, exists]);
 
   if (!tenantSlug) {
-    return <NotFoundPage />;
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#f9faf3] flex items-center justify-center">
+          <LoadingIcon className="w-12 h-12" />
+        </div>
+      }>
+        <NotFoundPage />
+      </Suspense>
+    );
   }
 
   if (exists === null) {
@@ -148,14 +157,24 @@ export function TenantLayout() {
   }
 
   if (exists === false) {
-    return <NotFoundPage />;
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#f9faf3] flex items-center justify-center">
+          <LoadingIcon className="w-12 h-12" />
+        </div>
+      }>
+        <NotFoundPage />
+      </Suspense>
+    );
   }
 
   return (
     <TenantProvider tenantSlug={tenantSlug} tenantName={tenantName ?? tenantSlug}>
       <FeatureFlagsProvider>
         <MenuBundlePrefetcher tenantSlug={tenantSlug} />
-        <Outlet />
+        <main className="min-h-screen">
+          <Outlet />
+        </main>
       </FeatureFlagsProvider>
     </TenantProvider>
   );

@@ -670,6 +670,18 @@ export type CustomerMenuBundle = {
   generalInfo: GeneralInfo;
 };
 
+/** Thrown when the public menu bundle returns 404 (menu or tenant not found). Enables graceful handling without retrying auth-required fallbacks. */
+export class MenuNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MenuNotFoundError';
+  }
+}
+
+export function isMenuNotFoundError(err: unknown): err is MenuNotFoundError {
+  return err instanceof MenuNotFoundError;
+}
+
 export const customerMenuApi = {
   async getPublicBundle(tenantSlug: string, slug?: string): Promise<CustomerMenuBundle> {
     const url = slug
@@ -680,7 +692,11 @@ export const customerMenuApi = {
         headers: { 'Authorization': `Bearer ${publicAnonKey}` },
       }, 1, 300);
       const result = await response.json();
-      if (!result.success) throw new Error(result.error || 'Failed to fetch public menu bundle');
+      if (!result.success) {
+        const msg = result.error || 'Failed to fetch public menu bundle';
+        if (response.status === 404) throw new MenuNotFoundError(msg);
+        throw new Error(msg);
+      }
       return result.data;
     });
   },

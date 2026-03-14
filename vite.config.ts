@@ -46,6 +46,24 @@ export default defineConfig(({ command }) => ({
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
             return 'vendor-react';
           }
+          if (id.includes('node_modules/react-router')) {
+            return 'vendor-router';
+          }
+          if (id.includes('node_modules/@supabase/')) {
+            return 'vendor-supabase';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-icons';
+          }
+          if (
+            id.includes('node_modules/@radix-ui/') ||
+            id.includes('node_modules/motion') ||
+            id.includes('node_modules/framer-motion') ||
+            id.includes('node_modules/@emotion/') ||
+            id.includes('node_modules/@mui/')
+          ) {
+            return 'vendor-ui';
+          }
           if (id.includes('node_modules/recharts')) {
             return 'recharts';
           }
