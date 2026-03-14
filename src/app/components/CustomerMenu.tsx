@@ -9,6 +9,7 @@ import type { PublicLoyaltyProgram } from '../types/loyalty';
 import { LoyaltyBottomSheet } from './LoyaltyBottomSheet';
 import { ShareBottomSheet } from './ShareBottomSheet';
 import { trackMenuItemClick } from '../lib/analytics';
+import { optimizeImageUrl } from '/utils/imageCdn';
 import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
 import { hasTwoLayerMatrix, normalizePricingModel, getMatrixCellPrice } from '../lib/pricing';
 import { toast } from 'sonner';
@@ -185,12 +186,8 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         }
       }
       setGeneralInfo(infoData);
-      try {
-        const offersData = await offersApi.getAll();
-        setOffers(offersData);
-      } catch (error) {
-        // If feature is disabled for this tenant, this endpoint returns a 403 (feature_disabled).
-        // In that case we silently show the menu without offers.
+      // Load offers and loyalty in parallel, non-blocking — menu shows immediately when bundle is ready
+      offersApi.getAll().then(setOffers).catch((error) => {
         if (
           !(error instanceof Error) ||
           (!error.message.includes('feature_disabled') && !error.message.includes('Feature is disabled'))
@@ -198,13 +195,10 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           console.warn('Could not load offers:', error);
         }
         setOffers([]);
-      }
-      try {
-        const lp = await publicLoyaltyApi.getProgram(tenantSlug);
+      });
+      publicLoyaltyApi.getProgram(tenantSlug).then((lp) => {
         if (lp?.active) setLoyaltyProgram(lp);
-      } catch {
-        // Loyalty not enabled or not set up -- ignore silently.
-      }
+      }).catch(() => {});
 
       // Migrate old data structure to new structure
       const migratedMenuItems = menuData.map(item => {
@@ -640,12 +634,13 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     .toUpperCase() || 'BR';
 
   const lcpImageUrl = highlightImages[0] ?? generalInfo.backgroundImage ?? generalInfo.logoImage;
+  const lcpPreloadUrl = lcpImageUrl ? optimizeImageUrl(lcpImageUrl) : null;
 
   return (
     <div className="relative min-h-screen bg-white max-w-[600px] mx-auto shadow-lg" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      {lcpImageUrl && (
+      {lcpPreloadUrl && (
         <Helmet>
-          <link rel="preload" as="image" href={lcpImageUrl} />
+          <link rel="preload" as="image" href={lcpPreloadUrl} />
         </Helmet>
       )}
       {/* Header: hero / highlights slider + restaurant info block */}
@@ -701,7 +696,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                     >
                       <div className="relative w-full aspect-video bg-gray-100 rounded-2xl overflow-hidden">
                         <img
-                          src={src}
+                          src={optimizeImageUrl(src)}
                           alt=""
                           className="w-full h-full object-cover rounded-2xl pointer-events-none select-none"
                           draggable={false}
@@ -722,7 +717,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           >
             {generalInfo.backgroundImage ? (
               <img
-                src={generalInfo.backgroundImage}
+                src={optimizeImageUrl(generalInfo.backgroundImage)}
                 alt=""
                 className="w-full h-[220px] object-cover"
                 fetchPriority="high"
@@ -893,7 +888,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
       {/* Active offers strip: right under tabs */}
       {featuredOfferItems.length > 0 && (
-        <div style={{ backgroundColor: `${brandColor}1A` }}>
+        <div style={{ backgroundColor: `${brandColor}1A`, contentVisibility: 'auto' }}>
           {/* Big centered title with % icons */}
           <div className="text-center py-6 px-4">
             <h2 className="font-bold text-2xl sm:text-3xl text-[#18181b] uppercase tracking-tight">
@@ -969,6 +964,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
               ref={(el) => (categoryRefs.current[category.name] = el)}
               data-category={category.name}
               className="scroll-mt-[100px]"
+              style={{ contentVisibility: 'auto' }}
             >
               {categoryItems.map((item) => {
                 const isMatrix = hasTwoLayerMatrix(item);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useParams } from 'react-router';
+import { Outlet, useParams, useLocation } from 'react-router';
 import { TenantProvider } from '../context/TenantContext';
 import { FeatureFlagsProvider } from '../context/FeatureFlagsContext';
-import { superAdminApi } from '../services/api';
+import { superAdminApi, customerMenuApi } from '../services/api';
 import NotFoundPage from '../pages/NotFoundPage';
 import { LoadingIcon } from './LoadingIcon';
 
@@ -154,8 +154,22 @@ export function TenantLayout() {
   return (
     <TenantProvider tenantSlug={tenantSlug} tenantName={tenantName ?? tenantSlug}>
       <FeatureFlagsProvider>
+        <MenuBundlePrefetcher tenantSlug={tenantSlug} />
         <Outlet />
       </FeatureFlagsProvider>
     </TenantProvider>
   );
+}
+
+/** Prefetch menu bundle when on menu route so CustomerMenu gets cache hit or in-flight reuse */
+function MenuBundlePrefetcher({ tenantSlug }: { tenantSlug: string }) {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (!pathname.includes('/menu')) return;
+    const parts = pathname.split('/');
+    const menuIdx = parts.indexOf('menu');
+    const slug = menuIdx >= 0 && parts[menuIdx + 1] && parts[menuIdx + 1] !== '' ? parts[menuIdx + 1] : undefined;
+    void customerMenuApi.getPublicBundle(tenantSlug, slug);
+  }, [tenantSlug, pathname]);
+  return null;
 }

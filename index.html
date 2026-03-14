@@ -7,7 +7,7 @@
       <link rel="icon" type="image/png" href="/favicon.png" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" />
+      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=optional" />
       <title>OrdrMoor | Digital Menu Platform</title>
       <meta
         name="description"
@@ -59,26 +59,33 @@
               window.setTimeout(loadGtag, 2000);
             }
           };
-          if ("PerformanceObserver" in window && "PerformanceEntry" in window) {
-            try {
-              var po = new PerformanceObserver(function () {
-                po.disconnect();
-                scheduleGtag();
-              });
-              po.observe({ type: "largest-contentful-paint", buffered: true });
-              window.setTimeout(scheduleGtag, 5000);
-            } catch (e) {
+          var loaded = false;
+          var onInteraction = function () {
+            if (loaded) return;
+            loaded = true;
+            window.removeEventListener("click", onInteraction, { passive: true });
+            window.removeEventListener("scroll", onInteraction, { passive: true });
+            window.removeEventListener("keydown", onInteraction, { passive: true });
+            scheduleGtag();
+          };
+          window.addEventListener("click", onInteraction, { passive: true });
+          window.addEventListener("scroll", onInteraction, { passive: true });
+          window.addEventListener("keydown", onInteraction, { passive: true });
+          window.setTimeout(function () {
+            if (!loaded) {
+              loaded = true;
+              window.removeEventListener("click", onInteraction, { passive: true });
+              window.removeEventListener("scroll", onInteraction, { passive: true });
+              window.removeEventListener("keydown", onInteraction, { passive: true });
               scheduleGtag();
             }
-          } else {
-            scheduleGtag();
-          }
+          }, 10000);
         })();
       </script>
     </head>
 
     <body>
-      <div id="root"></div>
+      <div id="root"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f9faf3;font-family:system-ui,sans-serif;color:#666;font-size:0.9rem">Loading…</div></div>
       <script type="module" src="/src/main.tsx"></script>
     </body>
   </html>

@@ -2,12 +2,44 @@
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react-swc'
 import { visualizer } from 'rollup-plugin-visualizer'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router',
+      '@supabase/supabase-js',
+      'sonner',
+      'lucide-react',
+      'react-helmet-async',
+      'clsx',
+      'tailwind-merge',
+    ],
+    holdUntilCrawlEnd: false,
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '/utils': path.resolve(__dirname, './utils'),
+    },
+    dedupe: ['react', 'react-dom'],
+  },
+  server: command === 'serve' ? {
+    warmup: {
+      clientFiles: [
+        './src/main.tsx',
+        './src/app/App.tsx',
+        './src/app/components/TenantLayout.tsx',
+        './src/app/pages/CustomerMenuPage.tsx',
+        './src/app/components/CustomerMenu.tsx',
+      ],
+    },
+  } : undefined,
   build: {
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -37,11 +69,4 @@ export default defineConfig({
     tailwindcss(),
     process.env.ANALYZE === '1' && visualizer({ open: false, gzipSize: true, filename: 'dist/stats.html' }),
   ].filter(Boolean),
-  resolve: {
-    alias: {
-      // Alias @ to the src directory
-      '@': path.resolve(__dirname, './src'),
-      '/utils': path.resolve(__dirname, './utils'),
-    },
-  },
-})
+}))
