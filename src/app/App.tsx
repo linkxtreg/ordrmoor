@@ -102,9 +102,9 @@ function SuperAdminRoute() {
 export default function App() {
   React.useEffect(() => {
     const prefetch = () => {
-      // Warm up customer routes only; AdminPage loads on demand when navigating to admin.
+      // Warm up customer menu only. Do not prefetch login/dashboard (UniversalLoginPage, AdminPage)
+      // so public /t/:slug/menu stays light — no Logo, googleAuth, or auth chunks.
       void import('./pages/CustomerMenuPage');
-      void import('./pages/UniversalLoginPage');
     };
 
     if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {

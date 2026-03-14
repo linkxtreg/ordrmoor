@@ -4,7 +4,7 @@ import { Star, AlertCircle, Gift, Phone, Share2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
 import type { OfferWithItems } from '../types/offers';
-import { customerMenuApi, isMenuNotFoundError, MenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
+import { customerMenuApi, isMenuNotFoundError, MenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi, type CustomerMenuBundle } from '../services/api';
 import type { PublicLoyaltyProgram } from '../types/loyalty';
 import { trackMenuItemClick } from '../lib/analytics';
 import { optimizeImageUrl } from '/utils/imageCdn';
@@ -86,6 +86,18 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
   const getCacheKey = () => `customer-menu:${tenantSlug}:${slug ?? '__default__'}`;
 
+  /** Hydration: read menu data injected by Netlify Edge (__MENU_DATA__). Returns null if not present (e.g. local dev). */
+  const getSSRMenuData = (): CustomerMenuBundle | null => {
+    if (typeof document === 'undefined') return null;
+    const el = document.getElementById('__MENU_DATA__');
+    if (!el || !el.textContent?.trim()) return null;
+    try {
+      return JSON.parse(el.textContent) as CustomerMenuBundle;
+    } catch {
+      return null;
+    }
+  };
+
   const hydrateFromCache = (): boolean => {
     if (typeof window === 'undefined') return false;
     try {
@@ -130,20 +142,101 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     }
   };
 
+  /** Apply bundle (from SSR or API) to state: migration, sort, setters, persist cache. */
+  const applyBundleToState = useCallback(
+    (infoData: GeneralInfo, menuData: MenuItem[], categoriesData: Category[]) => {
+      const migratedMenuItems = menuData.map((item) => {
+        if (item.pricing && typeof item.pricing === 'object' && !item.price) {
+          let price = 0;
+          const variations = Object.values(item.pricing || {});
+          if (variations.length > 0) {
+            const mealTypes = Object.values(variations[0] || {});
+            if (mealTypes.length > 0) price = mealTypes[0] as number;
+          }
+          return {
+            ...item,
+            id: item.id,
+            name: item.name,
+            category: item.category,
+            description: item.description ?? '',
+            price,
+            image: item.image,
+            isAvailable: item.isAvailable,
+            isPopular: item.isPopular,
+            order: item.order,
+          };
+        }
+        return {
+          ...item,
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          description: item.description ?? '',
+          price: item.price || 0,
+          image: item.image,
+          isAvailable: item.isAvailable,
+          isPopular: item.isPopular,
+          order: item.order,
+        };
+      });
+      const seen = new Set<string>();
+      const uniqueItems = migratedMenuItems.filter((item) => {
+        const idKey = item.id;
+        const contentKey = `${item.name}_${item.category}_${item.price}`;
+        if (seen.has(idKey) || seen.has(contentKey)) return false;
+        seen.add(idKey);
+        seen.add(contentKey);
+        return true;
+      });
+      const sortedMenuItems = uniqueItems
+        .filter((item) => item.isAvailable)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const sortedCategories = (categoriesData || [])
+        .filter((c) => c.isAvailable !== false)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      setGeneralInfo(infoData);
+      setMenuItems(sortedMenuItems);
+      setCategories(sortedCategories);
+      persistCache({ menuItems: sortedMenuItems, categories: sortedCategories, generalInfo: infoData });
+    },
+    [persistCache]
+  );
+
   useEffect(() => {
+    const ssr = getSSRMenuData();
+    if (ssr) {
+      applyBundleToState(ssr.generalInfo, ssr.items || [], ssr.categories || []);
+      setIsLoading(false);
+      setLoadError(null);
+      void Promise.allSettled([
+        offersApi.getAll(),
+        publicLoyaltyApi.getProgram(tenantSlug),
+      ]).then(([offersResult, loyaltyResult]) => {
+        if (offersResult.status === 'fulfilled') setOffers(offersResult.value);
+        else {
+          const err = offersResult.reason;
+          if (!(err instanceof Error) || (!err.message?.includes('feature_disabled') && !err.message?.includes('Feature is disabled'))) {
+            console.warn('Could not load offers:', err);
+          }
+          setOffers([]);
+        }
+        if (loyaltyResult.status === 'fulfilled' && loyaltyResult.value?.active) setLoyaltyProgram(loyaltyResult.value);
+      });
+      return;
+    }
     const hasCache = hydrateFromCache();
     loadMenuData({ showLoader: !hasCache });
   }, [slug, tenantSlug]);
 
   const loadMenuData = async ({ showLoader = true }: { showLoader?: boolean } = {}) => {
     try {
-      if (showLoader) setIsLoading(true);
       setLoadError(null);
+      if (showLoader) setIsLoading(true);
+
       let infoData: GeneralInfo;
       let menuData: MenuItem[];
       let categoriesData: Category[];
 
-      // Fetch bundle, offers, and loyalty in parallel to cut network wait time
       const fetchBundle = async () => {
         try {
           const bundle = await customerMenuApi.getPublicBundle(tenantSlug, slug);
@@ -199,7 +292,6 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
       infoData = bundleResult.value.infoData;
       menuData = bundleResult.value.menuData;
       categoriesData = bundleResult.value.categoriesData;
-      setGeneralInfo(infoData);
 
       if (offersResult.status === 'fulfilled') setOffers(offersResult.value);
       else {
@@ -212,81 +304,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
 
       if (loyaltyResult.status === 'fulfilled' && loyaltyResult.value?.active) setLoyaltyProgram(loyaltyResult.value);
 
-      // Migrate old data structure to new structure
-      const migratedMenuItems = menuData.map(item => {
-        // If item has old structure (pricing object), migrate to new structure
-        if (item.pricing && typeof item.pricing === 'object' && !item.price) {
-          // Extract first price from old pricing matrix
-          let price = 0;
-          const variations = Object.values(item.pricing || {});
-          if (variations.length > 0) {
-            const mealTypes = Object.values(variations[0] || {});
-            if (mealTypes.length > 0) {
-              price = mealTypes[0] as number;
-            }
-          }
-          
-          return {
-            ...item,
-            id: item.id,
-            name: item.name,
-            category: item.category,
-            description: item.description ?? '',
-            price,
-            image: item.image,
-            isAvailable: item.isAvailable,
-            isPopular: item.isPopular,
-            order: item.order,
-          };
-        }
-        
-        // Return item as-is (keep dual-language fields if present)
-        return {
-          ...item,
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          description: item.description ?? '',
-          price: item.price || 0,
-          image: item.image,
-          isAvailable: item.isAvailable,
-          isPopular: item.isPopular,
-          order: item.order,
-        };
-      });
-
-      // Remove duplicates - check by both ID and content (name + category + price)
-      const seen = new Set<string>();
-      const uniqueItems = migratedMenuItems.filter(item => {
-        const idKey = item.id;
-        const contentKey = `${item.name}_${item.category}_${item.price}`;
-        
-        // Skip if we've seen this exact ID or content before
-        if (seen.has(idKey) || seen.has(contentKey)) {
-          return false;
-        }
-        
-        seen.add(idKey);
-        seen.add(contentKey);
-        return true;
-      });
-
-      // Sort items and categories by order
-      const sortedMenuItems = uniqueItems
-        .filter(item => item.isAvailable)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      
-      const sortedCategories = (categoriesData || [])
-        .filter((c) => c.isAvailable !== false)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-      setMenuItems(sortedMenuItems);
-      setCategories(sortedCategories);
-      persistCache({
-        menuItems: sortedMenuItems,
-        categories: sortedCategories,
-        generalInfo: infoData,
-      });
+      applyBundleToState(infoData, menuData, categoriesData);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load menu';
       const isExpectedNotFound = isMenuNotFoundError(error) || /menu not found|tenant not found/i.test(errorMessage);

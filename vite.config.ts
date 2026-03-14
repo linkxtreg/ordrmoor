@@ -40,6 +40,7 @@ export default defineConfig(({ command }) => ({
   } : undefined,
   build: {
     sourcemap: false,
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -52,9 +53,7 @@ export default defineConfig(({ command }) => ({
           if (id.includes('node_modules/@supabase/')) {
             return 'vendor-supabase';
           }
-          if (id.includes('node_modules/lucide-react')) {
-            return 'vendor-icons';
-          }
+          /* lucide-react: do not isolate into vendor-icons — let Rollup merge into importing chunks so it is minified with them (fixes Lighthouse "42% unminified"). */
           if (
             id.includes('node_modules/@radix-ui/') ||
             id.includes('node_modules/motion') ||
@@ -85,6 +84,6 @@ export default defineConfig(({ command }) => ({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
-    process.env.ANALYZE === '1' && visualizer({ open: false, gzipSize: true, filename: 'dist/stats.html' }),
-  ].filter(Boolean),
+    visualizer({ open: false, gzipSize: true, filename: 'stats.html' }),
+  ],
 }))

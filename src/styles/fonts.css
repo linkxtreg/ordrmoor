@@ -1,8 +1,8 @@
-/* Phase 2: Fonts loaded non-blocking from index.html (preload + onload). @import removed to avoid duplicate request. */
+/* Self-hosted fonts: see main.tsx for @fontsource imports (400/600; IBM Plex Arabic subset only). */
 
-/* Apply fonts globally with Arabic support */
+/* Apply fonts globally: IBM Plex Sans Arabic (Latin + Arabic). Inter removed — unused in app. */
 body {
-  font-family: 'IBM Plex Sans Arabic', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -12,15 +12,9 @@ body {
   unicode-bidi: plaintext;
 }
 
-/* Specific font classes for consistency */
-.font-inter {
-  font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif;
-}
-
-.font-poppins {
-  font-family: 'Poppins', 'IBM Plex Sans Arabic', sans-serif;
-}
-
+/* Legacy font classes (Inter/Poppins no longer loaded; fallback to IBM Plex or system) */
+.font-inter,
+.font-poppins,
 .font-arabic {
   font-family: 'IBM Plex Sans Arabic', sans-serif;
 }

@@ -1,4 +1,6 @@
 @import 'tailwindcss' source(none);
+/* Scan all app source for class names so PurgeCSS removes unused utilities in production */
 @source '../**/*.{js,ts,jsx,tsx}';
+@source '../../index.html';
 
 @import 'tw-animate-css';

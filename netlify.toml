@@ -2,6 +2,18 @@
   command = "npm run build"
   publish = "dist"
 
+# Netlify serves CSS/JS with brotli (Content-Encoding: br) automatically when the client supports it.
+# Optional: long cache for hashed assets.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Edge: inject __MENU_DATA__ for /t/*/menu pages to improve LCP (hero image known at first paint).
+[[edge_functions]]
+  path = "/t/*"
+  function = "menu-ssr"
+
 # Netlify Image CDN: allow Supabase Storage URLs for WebP compression.
 # Required for /.netlify/images?url=... to transform remote images.
 [images]

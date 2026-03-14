@@ -5,11 +5,6 @@
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="icon" type="image/png" href="/favicon.png" />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-      <!-- Phase 2: Non-blocking font load; apply on load so preconnect is used -->
-      <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Inter:wght@400;600&family=Poppins:wght@400;600&display=optional" onload="this.onload=null;this.rel='stylesheet'" />
-      <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=Inter:wght@400;600&family=Poppins:wght@400;600&display=optional" /></noscript>
       <title>OrdrMoor | Digital Menu Platform</title>
       <meta
         name="description"
@@ -41,47 +36,35 @@
           var hasGaId = gaId && gaId !== "__GA_ID_PLACEHOLDER__";
           if (!hasGaId) return;
 
-          window.dataLayer = window.dataLayer || [];
-          window.gtag = function () {
-            window.dataLayer.push(arguments);
-          };
-          window.gtag("js", new Date());
-          window.gtag("config", gaId, { send_page_view: false });
-
-          var loadGtag = function () {
+          function loadGTM() {
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function () {
+              window.dataLayer.push(arguments);
+            };
+            window.gtag("js", new Date());
+            window.gtag("config", gaId, { send_page_view: false });
             var script = document.createElement("script");
             script.async = true;
             script.src = "https://www.googletagmanager.com/gtag/js?id=" + gaId;
             document.head.appendChild(script);
-          };
-          var scheduleGtag = function () {
-            if ("requestIdleCallback" in window) {
-              window.requestIdleCallback(loadGtag, { timeout: 3000 });
-            } else {
-              window.setTimeout(loadGtag, 2000);
-            }
-          };
-          var loaded = false;
-          var onInteraction = function () {
-            if (loaded) return;
-            loaded = true;
-            window.removeEventListener("click", onInteraction, { passive: true });
-            window.removeEventListener("scroll", onInteraction, { passive: true });
-            window.removeEventListener("keydown", onInteraction, { passive: true });
-            scheduleGtag();
-          };
-          window.addEventListener("click", onInteraction, { passive: true });
-          window.addEventListener("scroll", onInteraction, { passive: true });
-          window.addEventListener("keydown", onInteraction, { passive: true });
-          window.setTimeout(function () {
-            if (!loaded) {
-              loaded = true;
-              window.removeEventListener("click", onInteraction, { passive: true });
-              window.removeEventListener("scroll", onInteraction, { passive: true });
-              window.removeEventListener("keydown", onInteraction, { passive: true });
-              scheduleGtag();
-            }
-          }, 10000);
+          }
+
+          var path = window.location.pathname;
+          var isMenuRoute = path.startsWith("/t/") && path.indexOf("/admin") === -1;
+          if (isMenuRoute) {
+            var events = ["mousedown", "touchstart", "keydown", "scroll"];
+            var handler = function () {
+              loadGTM();
+              events.forEach(function (e) {
+                window.removeEventListener(e, handler);
+              });
+            };
+            events.forEach(function (e) {
+              window.addEventListener(e, handler, { passive: true, once: true });
+            });
+          } else {
+            loadGTM();
+          }
         })();
       </script>
     </head>
