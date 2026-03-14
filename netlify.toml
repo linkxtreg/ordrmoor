@@ -1,3 +1,8 @@
 [build]
   command = "npm run build"
   publish = "dist"
+
+# Netlify Image CDN: allow Supabase Storage URLs for WebP compression.
+# Required for /.netlify/images?url=... to transform remote images.
+[images]
+  remote_images = ["https://[^/]+\\.supabase\\.co/.*"]

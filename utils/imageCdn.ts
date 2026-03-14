@@ -1,15 +1,16 @@
-import { getOptimizedImageUrl, type OptimizedImageOptions } from './imageUtils';
+import { cleanSupabaseUrl, getOptimizedImageUrl, type OptimizedImageOptions } from './imageUtils';
 
 /**
- * Netlify Image CDN - optimizes Supabase storage URLs for LCP.
- * Enable when on Netlify Pro/Enterprise with Image CDN add-on.
- * Set VITE_USE_NETLIFY_IMAGE_CDN=true in .env.
+ * Netlify Image CDN - compresses and converts images to WebP.
+ * Bypasses Supabase Free Tier (no on-the-fly transformations).
+ * Set VITE_USE_NETLIFY_IMAGE_CDN=false to fall back to Supabase (Pro only).
  */
-const USE_CDN = import.meta.env.VITE_USE_NETLIFY_IMAGE_CDN === 'true';
+const USE_NETLIFY_CDN = import.meta.env.VITE_USE_NETLIFY_IMAGE_CDN !== 'false';
 
 /**
- * Returns an optimized image URL. Uses Netlify Image CDN when enabled,
- * otherwise falls back to Supabase Storage image transformations (WebP, resize).
+ * Returns an optimized image URL. For Supabase URLs, prefers Netlify Image CDN
+ * (w=800, q=80, fm=webp) to compress the 287KB hero and avoid Supabase Free Tier limits.
+ * Uses clean public URLs (no tokens) so Netlify can process them.
  */
 export function optimizeImageUrl(
   url: string,
@@ -18,8 +19,10 @@ export function optimizeImageUrl(
   options?: Partial<OptimizedImageOptions>
 ): string {
   if (!url || !url.includes('supabase')) return url;
-  if (USE_CDN) {
-    return `/.netlify/images?url=${encodeURIComponent(url)}&w=${width}&q=${quality}`;
+  if (USE_NETLIFY_CDN) {
+    const cleanUrl = cleanSupabaseUrl(url);
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${base}/.netlify/images?url=${encodeURIComponent(cleanUrl)}&w=${width}&q=${quality}&fm=webp`;
   }
   return getOptimizedImageUrl(url, {
     maxWidth: width,

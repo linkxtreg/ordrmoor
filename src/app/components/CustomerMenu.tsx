@@ -4,11 +4,11 @@ import { Star, AlertCircle, Gift, Phone, Share2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
 import type { OfferWithItems } from '../types/offers';
-import { customerMenuApi, isMenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
+import { customerMenuApi, isMenuNotFoundError, MenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
 import type { PublicLoyaltyProgram } from '../types/loyalty';
 import { trackMenuItemClick } from '../lib/analytics';
 import { optimizeImageUrl } from '/utils/imageCdn';
-import { getOptimizedImageUrl } from '/utils/imageUtils';
+import { MenuSkeleton } from './MenuSkeleton';
 import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
 import { hasTwoLayerMatrix, normalizePricingModel, getMatrixCellPrice } from '../lib/pricing';
 import { toast } from 'sonner';
@@ -143,12 +143,49 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
       let menuData: MenuItem[];
       let categoriesData: Category[];
 
-      try {
-        const bundle = await customerMenuApi.getPublicBundle(tenantSlug, slug);
-        infoData = bundle.generalInfo;
-        menuData = bundle.items || [];
-        categoriesData = bundle.categories || [];
-      } catch (err) {
+      // Fetch bundle, offers, and loyalty in parallel to cut network wait time
+      const fetchBundle = async () => {
+        try {
+          const bundle = await customerMenuApi.getPublicBundle(tenantSlug, slug);
+          return { ok: true as const, infoData: bundle.generalInfo, menuData: bundle.items || [], categoriesData: bundle.categories || [] };
+        } catch (err) {
+          if (isMenuNotFoundError(err)) throw err;
+          try {
+            const bundle = await customerMenuApi.getBundle(slug);
+            return { ok: true as const, infoData: bundle.generalInfo, menuData: bundle.items || [], categoriesData: bundle.categories || [] };
+          } catch {
+            let menuId: string | undefined;
+            let fallbackInfo: GeneralInfo;
+            try {
+              if (slug) {
+                const [info, menu] = await Promise.all([generalInfoApi.get(), menusApi.getBySlug(slug)]);
+                fallbackInfo = info;
+                menuId = menu.id;
+              } else {
+                const [info, menusData] = await Promise.all([generalInfoApi.get(), menusApi.getAll()]);
+                fallbackInfo = info;
+                menuId = fallbackInfo.defaultMenuId || menusData[0]?.id;
+              }
+            } catch {
+              throw new MenuNotFoundError('Menu not found');
+            }
+            if (!menuId) {
+              return { ok: true as const, infoData: fallbackInfo, menuData: [], categoriesData: [] };
+            }
+            const [items, cats] = await Promise.all([menuItemsApi.getAll(menuId), categoriesApi.getAll(menuId)]);
+            return { ok: true as const, infoData: fallbackInfo, menuData: items, categoriesData: cats };
+          }
+        }
+      };
+
+      const [bundleResult, offersResult, loyaltyResult] = await Promise.allSettled([
+        fetchBundle(),
+        offersApi.getAll(),
+        publicLoyaltyApi.getProgram(tenantSlug),
+      ]);
+
+      if (bundleResult.status === 'rejected') {
+        const err = bundleResult.reason;
         if (isMenuNotFoundError(err)) {
           setMenuItems([]);
           setCategories([]);
@@ -156,63 +193,24 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           setLoadError(err.message || 'Menu not found');
           return;
         }
-        // Fallback for old backend versions before public bundle exists.
-        try {
-          const bundle = await customerMenuApi.getBundle(slug);
-          infoData = bundle.generalInfo;
-          menuData = bundle.items || [];
-          categoriesData = bundle.categories || [];
-        } catch {
-          // Final fallback for very old backend versions before /menu-bundle exists.
-        let menuId: string | undefined;
-        if (slug) {
-          try {
-            const [info, menu] = await Promise.all([
-              generalInfoApi.get(),
-              menusApi.getBySlug(slug),
-            ]);
-            infoData = info;
-            menuId = menu.id;
-          } catch {
-            setMenuItems([]);
-            setCategories([]);
-            setLoadError('Menu not found');
-            return;
-          }
-        } else {
-          const [info, menusData] = await Promise.all([
-            generalInfoApi.get(),
-            menusApi.getAll(),
-          ]);
-          infoData = info;
-          menuId = infoData.defaultMenuId || menusData[0]?.id;
-        }
-        if (!menuId) {
-          setMenuItems([]);
-          setCategories([]);
-          setGeneralInfo(infoData);
-          return;
-        }
-        [menuData, categoriesData] = await Promise.all([
-          menuItemsApi.getAll(menuId),
-          categoriesApi.getAll(menuId),
-        ]);
-        }
+        throw err;
       }
+
+      infoData = bundleResult.value.infoData;
+      menuData = bundleResult.value.menuData;
+      categoriesData = bundleResult.value.categoriesData;
       setGeneralInfo(infoData);
-      // Load offers and loyalty in parallel, non-blocking — menu shows immediately when bundle is ready
-      offersApi.getAll().then(setOffers).catch((error) => {
-        if (
-          !(error instanceof Error) ||
-          (!error.message.includes('feature_disabled') && !error.message.includes('Feature is disabled'))
-        ) {
-          console.warn('Could not load offers:', error);
+
+      if (offersResult.status === 'fulfilled') setOffers(offersResult.value);
+      else {
+        const err = offersResult.reason;
+        if (!(err instanceof Error) || (!err.message.includes('feature_disabled') && !err.message.includes('Feature is disabled'))) {
+          console.warn('Could not load offers:', err);
         }
         setOffers([]);
-      });
-      publicLoyaltyApi.getProgram(tenantSlug).then((lp) => {
-        if (lp?.active) setLoyaltyProgram(lp);
-      }).catch(() => {});
+      }
+
+      if (loyaltyResult.status === 'fulfilled' && loyaltyResult.value?.active) setLoyaltyProgram(loyaltyResult.value);
 
       // Migrate old data structure to new structure
       const migratedMenuItems = menuData.map(item => {
@@ -587,26 +585,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <svg
-            viewBox="0 0 200 200"
-            className="w-12 h-12 animate-spin mx-auto mb-4"
-            fill="none"
-            aria-hidden
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M153.666 65.0996L135.777 100.1L153.666 135.1H117.889L99.999 100.1L117.889 65.0996H153.666ZM99.666 100L81.7773 135H46L63.8887 100L46 65H81.7773L99.666 100Z"
-              fill="black"
-            />
-          </svg>
-          <p className="text-gray-600">{t.loading}</p>
-        </div>
-      </div>
-    );
+    return <MenuSkeleton />;
   }
 
   if (!generalInfo) {
@@ -762,7 +741,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           >
             {generalInfo.logoImage ? (
               <img
-                src={getOptimizedImageUrl(generalInfo.logoImage, { maxWidth: 144, quality: 85 })}
+                src={optimizeImageUrl(generalInfo.logoImage, 144, 85)}
                 alt=""
                 width={72}
                 height={72}
@@ -948,7 +927,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                     <div className="relative">
                       {item.image ? (
                         <img
-                          src={getOptimizedImageUrl(item.image, { maxWidth: 300, quality: 80 })}
+                          src={optimizeImageUrl(item.image, 300, 80)}
                           alt={getItemName(item)}
                           width={220}
                           height={220}
@@ -1022,7 +1001,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                   {item.image && !failedImageIds.has(item.id) && (
                     <div className="w-full flex justify-center overflow-hidden">
                       <img 
-                        src={getOptimizedImageUrl(item.image, { maxWidth: 300, quality: 80 })}
+                        src={optimizeImageUrl(item.image, 300, 80)}
                         alt={getItemName(item)} 
                         width={600}
                         height={400}
