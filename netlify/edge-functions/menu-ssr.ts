@@ -4,7 +4,7 @@
  * can render the hero image immediately (improves LCP).
  */
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 const KV_TABLE = "kv_store_47a828b2";
 const TENANTS_KEY = "_meta:tenants";
