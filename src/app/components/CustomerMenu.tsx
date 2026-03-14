@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
-import { Star, AlertCircle, Gift, Phone } from 'lucide-react';
+import { Star, AlertCircle, Gift, Phone, Share2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
 import type { OfferWithItems } from '../types/offers';
 import { customerMenuApi, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi } from '../services/api';
 import type { PublicLoyaltyProgram } from '../types/loyalty';
 import { LoyaltyBottomSheet } from './LoyaltyBottomSheet';
+import { ShareBottomSheet } from './ShareBottomSheet';
 import { trackMenuItemClick } from '../lib/analytics';
 import { getActiveOfferForItem, getDiscountedPrice, hasActiveOfferForItem } from '../lib/offers';
 import { hasTwoLayerMatrix, normalizePricingModel, getMatrixCellPrice } from '../lib/pricing';
@@ -58,6 +59,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   const [selectedMatrixByItemId, setSelectedMatrixByItemId] = useState<Record<string, { rowOptionId: string; columnOptionId: string }>>({});
   const [loyaltyProgram, setLoyaltyProgram] = useState<PublicLoyaltyProgram | null>(null);
   const [loyaltySheetOpen, setLoyaltySheetOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [highlightTrackIndex, setHighlightTrackIndex] = useState(1); // 1 = first real slide when infinite
   const [highlightSnapping, setHighlightSnapping] = useState(false);
   const [highlightDragPx, setHighlightDragPx] = useState(0);
@@ -637,7 +639,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     .toUpperCase() || 'BR';
 
   return (
-    <div className="min-h-screen bg-white max-w-[600px] mx-auto shadow-lg" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="relative min-h-screen bg-white max-w-[600px] mx-auto shadow-lg" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header: hero / highlights slider + restaurant info block */}
       <div className="w-full">
         {highlightImages.length > 0 ? (
@@ -721,7 +723,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           </div>
         )}
 
-        {/* Restaurant info block - white, logo left (no padding) / name + phone + slogan + social right, tight gap */}
+        {/* Restaurant info block - white, logo left (no padding) / name + phone + slogan + social right, share opposite logo */}
         <div className="bg-white w-full px-6 py-5 flex gap-2 items-start">
           {/* Left: logo / brand square - no padding, fills box */}
           <div
@@ -825,6 +827,16 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
               );
             })()}
           </div>
+
+          {/* Right: share button - opposite of logo */}
+          <button
+            onClick={() => setShareSheetOpen(true)}
+            className="shrink-0 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            style={{ color: brandColor }}
+            aria-label={language === 'ar' ? 'مشاركة' : 'Share'}
+          >
+            <Share2 className="size-6" />
+          </button>
         </div>
       </div>
 
@@ -1189,6 +1201,15 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
           brandColor={brandColor}
         />
       )}
+
+      {/* Share bottom sheet */}
+      <ShareBottomSheet
+        open={shareSheetOpen}
+        onOpenChange={setShareSheetOpen}
+        shareUrl={typeof window !== 'undefined' ? `${window.location.origin}${basePath}/menu${slug ? `/${slug}` : ''}` : ''}
+        language={language}
+        brandColor={brandColor}
+      />
     </div>
   );
 }
