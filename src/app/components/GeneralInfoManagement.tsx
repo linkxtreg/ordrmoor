@@ -114,8 +114,9 @@ export const GeneralInfoManagement = memo(function GeneralInfoManagement({ gener
                         uploadOptions={{
                           maxWidth: 1200,
                           maxHeight: 800,
-                          quality: 0.85,
-                          targetMaxBytes: 400 * 1024,
+                          quality: 0.82,
+                          minQuality: 0.72,
+                          targetMaxBytes: 180 * 1024,
                         }}
                       />
                     </div>

@@ -38,11 +38,11 @@ export function BackgroundImageUpload({ value, onChange }: BackgroundImageUpload
 
         // Upload to server
         const imageUrl = await imageApi.upload(file, {
-          maxWidth: 1500,
-          maxHeight: 1000,
-          quality: 0.84,
-          minQuality: 0.74,
-          targetMaxBytes: 340 * 1024, // ~340KB target for cover images
+          maxWidth: 1200,
+          maxHeight: 800,
+          quality: 0.82,
+          minQuality: 0.72,
+          targetMaxBytes: 200 * 1024, // ~200KB for LCP hero/background
         });
         setPreview(imageUrl);
         onChange(imageUrl);

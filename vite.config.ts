@@ -7,7 +7,22 @@ import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
   build: {
-    sourcemap: false,
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/recharts')) {
+            return 'recharts';
+          }
+          if (id.includes('node_modules/xlsx')) {
+            return 'xlsx';
+          }
+        },
+      },
+    },
   },
   test: {
     globals: true,
