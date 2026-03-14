@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Star, AlertCircle, Gift, Phone, Share2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
@@ -638,8 +639,15 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
     .join('')
     .toUpperCase() || 'BR';
 
+  const lcpImageUrl = highlightImages[0] ?? generalInfo.backgroundImage ?? generalInfo.logoImage;
+
   return (
     <div className="relative min-h-screen bg-white max-w-[600px] mx-auto shadow-lg" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      {lcpImageUrl && (
+        <Helmet>
+          <link rel="preload" as="image" href={lcpImageUrl} />
+        </Helmet>
+      )}
       {/* Header: hero / highlights slider + restaurant info block */}
       <div className="w-full">
         {highlightImages.length > 0 ? (
@@ -697,6 +705,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                           alt=""
                           className="w-full h-full object-cover rounded-2xl pointer-events-none select-none"
                           draggable={false}
+                          fetchPriority={i === (highlightRealCount <= 1 ? 0 : 1) ? 'high' : 'auto'}
                         />
                       </div>
                     </div>
@@ -716,6 +725,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
                 src={generalInfo.backgroundImage}
                 alt=""
                 className="w-full h-[220px] object-cover"
+                fetchPriority="high"
               />
             ) : (
               <div className="w-full h-[220px]" />

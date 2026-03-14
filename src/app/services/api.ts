@@ -676,7 +676,9 @@ export const customerMenuApi = {
       ? `${API_BASE}/public/menu-bundle/${encodeURIComponent(tenantSlug)}?slug=${encodeURIComponent(slug)}`
       : `${API_BASE}/public/menu-bundle/${encodeURIComponent(tenantSlug)}`;
     return getCachedJson<CustomerMenuBundle>(url, async () => {
-      const response = await fetchWithRetry(url, {}, 1, 300);
+      const response = await fetchWithRetry(url, {
+        headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      }, 1, 300);
       const result = await response.json();
       if (!result.success) throw new Error(result.error || 'Failed to fetch public menu bundle');
       return result.data;

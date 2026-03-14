@@ -101,9 +101,8 @@ function SuperAdminRoute() {
 export default function App() {
   React.useEffect(() => {
     const prefetch = () => {
-      // Warm up most likely next routes/chunks after first paint.
+      // Warm up customer routes only; AdminPage loads on demand when navigating to admin.
       void import('./pages/CustomerMenuPage');
-      void import('./pages/AdminPage');
       void import('./pages/UniversalLoginPage');
     };
 

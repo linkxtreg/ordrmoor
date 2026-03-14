@@ -1427,8 +1427,8 @@ function toOfferView(offer: OfferRecord, menuItemById: Map<string, any>) {
 async function listOffers(c: any) {
   try {
     const tenantSlug = getTenantSlugOrDefault(c);
-    const featureCheck = await requireFeature(c, tenantSlug, "offers");
-    if (!featureCheck.ok) return featureCheck.res;
+    const enabled = await isFeatureEnabled(tenantSlug, "offers");
+    if (!enabled) return c.json({ success: true, data: [] });
 
     const tkv = tenantKv(tenantSlug);
     const [offersRaw, menuItems] = await Promise.all([
@@ -1785,7 +1785,7 @@ async function getPublicLoyaltyProgram(c: any) {
     const tenantSlug = c.req.param("tenantSlug");
     if (!tenantSlug) return c.json({ success: false, error: "Tenant required" }, 400);
     const enabled = await isFeatureEnabled(tenantSlug, "loyalty");
-    if (!enabled) return c.json({ success: false, error: "Loyalty not enabled" }, 404);
+    if (!enabled) return c.json({ success: true, data: null });
     const tkv = tenantKv(tenantSlug);
     const program = await tkv.get("loyalty-program");
     if (!program) return c.json({ success: true, data: null });
