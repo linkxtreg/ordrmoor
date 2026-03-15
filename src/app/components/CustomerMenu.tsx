@@ -4,7 +4,7 @@ import { Star, AlertCircle, Gift, Phone, Share2 } from 'lucide-react';
 import { useTenant } from '../context/TenantContext';
 import { MenuItem, Category, GeneralInfo } from '../types/menu';
 import type { OfferWithItems } from '../types/offers';
-import { customerMenuApi, isMenuNotFoundError, MenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi, type CustomerMenuBundle } from '../services/api';
+import { customerMenuApi, bustPublicBundleCache, isMenuNotFoundError, MenuNotFoundError, menuItemsApi, categoriesApi, generalInfoApi, menusApi, offersApi, publicLoyaltyApi, type CustomerMenuBundle } from '../services/api';
 import type { PublicLoyaltyProgram } from '../types/loyalty';
 import { trackMenuItemClick } from '../lib/analytics';
 import { optimizeImageUrl } from '/utils/imageCdn';
@@ -48,7 +48,8 @@ interface CustomerMenuProps {
   slug?: string;
 }
 
-const CUSTOMER_MENU_CACHE_TTL_MS = 5 * 60 * 1000;
+const CUSTOMER_MENU_CACHE_TTL_MS = 30 * 1000; // 30 seconds — just long enough to avoid a flash on instant back-navigation
+const POLL_INTERVAL_MS = 30 * 1000; // re-fetch every 30 seconds so admin changes appear quickly
 
 export function CustomerMenu({ slug }: CustomerMenuProps) {
   const { basePath, tenantSlug, tenantName } = useTenant();
@@ -189,7 +190,7 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
         return true;
       });
       const sortedMenuItems = uniqueItems
-        .filter((item) => item.isAvailable)
+        .filter((item) => item.isAvailable !== false)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       const sortedCategories = (categoriesData || [])
         .filter((c) => c.isAvailable !== false)
@@ -205,27 +206,39 @@ export function CustomerMenu({ slug }: CustomerMenuProps) {
   useEffect(() => {
     const ssr = getSSRMenuData();
     if (ssr) {
+      // Hydrate immediately from SSR snapshot so the page renders without any loading state,
+      // then kick off a background refresh so any admin changes since the SSR snapshot are applied.
       applyBundleToState(ssr.generalInfo, ssr.items || [], ssr.categories || []);
       setIsLoading(false);
       setLoadError(null);
-      void Promise.allSettled([
-        offersApi.getAll(),
-        publicLoyaltyApi.getProgram(tenantSlug),
-      ]).then(([offersResult, loyaltyResult]) => {
-        if (offersResult.status === 'fulfilled') setOffers(offersResult.value);
-        else {
-          const err = offersResult.reason;
-          if (!(err instanceof Error) || (!err.message?.includes('feature_disabled') && !err.message?.includes('Feature is disabled'))) {
-            console.warn('Could not load offers:', err);
-          }
-          setOffers([]);
-        }
-        if (loyaltyResult.status === 'fulfilled' && loyaltyResult.value?.active) setLoyaltyProgram(loyaltyResult.value);
-      });
+      loadMenuData({ showLoader: false });
       return;
     }
     const hasCache = hydrateFromCache();
     loadMenuData({ showLoader: !hasCache });
+  }, [slug, tenantSlug]);
+
+  // Poll every 30 seconds: bust the in-memory API cache first so each poll always
+  // hits the server and picks up the latest prices, order, and availability.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      bustPublicBundleCache(tenantSlug, slug);
+      loadMenuData({ showLoader: false });
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [slug, tenantSlug]);
+
+  // Immediately refresh when the customer tab becomes visible (e.g. after switching
+  // from the admin tab), so changes appear without waiting for the next poll.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        bustPublicBundleCache(tenantSlug, slug);
+        loadMenuData({ showLoader: false });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [slug, tenantSlug]);
 
   const loadMenuData = async ({ showLoader = true }: { showLoader?: boolean } = {}) => {

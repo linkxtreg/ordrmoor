@@ -682,6 +682,16 @@ export function isMenuNotFoundError(err: unknown): err is MenuNotFoundError {
   return err instanceof MenuNotFoundError;
 }
 
+/** Force-clears the in-memory cache for the public menu bundle so the next fetch always hits the server. */
+export function bustPublicBundleCache(tenantSlug: string, slug?: string): void {
+  const url = slug
+    ? `${API_BASE}/public/menu-bundle/${encodeURIComponent(tenantSlug)}?slug=${encodeURIComponent(slug)}`
+    : `${API_BASE}/public/menu-bundle/${encodeURIComponent(tenantSlug)}`;
+  const key = cacheKey(url);
+  responseCache.delete(key);
+  inFlightCache.delete(key);
+}
+
 export const customerMenuApi = {
   async getPublicBundle(tenantSlug: string, slug?: string): Promise<CustomerMenuBundle> {
     const url = slug
